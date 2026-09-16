@@ -5,260 +5,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Fän Jaktlag - Säsongsplanering</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-  <style>[x-cloak] { display: none !important; }</style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-</head>
-<body class="bg-stone-100 text-stone-800 min-h-screen font-sans antialiased">
-
-  <div x-data="jaktApp()" class="max-w-md mx-auto min-h-screen flex flex-col bg-white border-x border-stone-200 shadow-sm relative">
-    
-    <!-- HEADER MED INLOGGNINGSSTATUS -->
-    <header class="bg-emerald-800 text-white p-3.5 sticky top-0 z-20 shadow-sm flex justify-between items-center">
-      <div>
-        <h1 class="text-base font-bold tracking-tight">Fän Jaktlag</h1>
-        <p class="text-[11px] text-emerald-200" x-text="isLoggedIn ? 'Inloggad: Jaktledningen' : 'Gästvy (Inbjudan)'"></p>
-      </div>
-
-      <!-- Demo-knapp för att simulera Google-inloggning -->
-      <div>
-        <template x-if="!isLoggedIn">
-          <button @click="simuleraGoogleLogin()" class="bg-white text-emerald-900 hover:bg-emerald-50 text-[11px] font-bold px-2.5 py-1.5 rounded-lg shadow flex items-center gap-1.5 transition-colors">
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
-            Logga in
-          </button>
-        </template>
-        <template x-if="isLoggedIn">
-          <button @click="isLoggedIn = false" class="bg-emerald-900/80 text-emerald-100 hover:bg-emerald-900 text-[10px] px-2 py-1 rounded border border-emerald-700">
-            Logga ut
-          </button>
-        </template>
-      </div>
-    </header>
-
-    <!-- VY 1: JAKTLEDNINGEN (FULLEDIG ÅTKOMST) -->
-    <template x-if="isLoggedIn">
-      <div class="flex-1 flex flex-col">
-        <!-- Navigation Tabs -->
-        <nav class="flex border-b border-stone-200 bg-stone-50 sticky top-[53px] z-10">
-          <button @click="activeTab = 'schema'" :class="activeTab === 'schema' ? 'border-emerald-700 text-emerald-900 font-semibold bg-white' : 'border-transparent text-stone-500'" class="flex-1 py-2.5 text-xs text-center border-b-2">
-            Jaktschema
-          </button>
-          <button @click="activeTab = 'deltagare'" :class="activeTab === 'deltagare' ? 'border-emerald-700 text-emerald-900 font-semibold bg-white' : 'border-transparent text-stone-500'" class="flex-1 py-2.5 text-xs text-center border-b-2">
-            Deltagare & Hundar
-          </button>
-          <button @click="activeTab = 'rapporter'" :class="activeTab === 'rapporter' ? 'border-emerald-700 text-emerald-900 font-semibold bg-white' : 'border-transparent text-stone-500'" class="flex-1 py-2.5 text-xs text-center border-b-2">
-            Jaktrapporter
-          </button>
-        </nav>
-
-        <main class="p-4 space-y-4 flex-1">
-          <!-- SCHEMAFLIK -->
-          <section x-show="activeTab === 'schema'" class="space-y-3">
-            <div class="flex justify-between items-center">
-              <h2 class="text-xs font-bold text-stone-500 uppercase tracking-wider">Planerade Jakter</h2>
-              <button @click="showModal = true" class="bg-emerald-800 text-white text-xs px-2.5 py-1.5 rounded-lg font-semibold shadow-sm">
-                + Ny jakt
-              </button>
-            </div>
-
-            <template x-for="jakt in jakter" :key="jakt.id">
-              <div class="bg-white border border-stone-200 rounded-xl p-3 shadow-sm space-y-2.5">
-                <div class="flex justify-between items-start border-b border-stone-100 pb-2">
-                  <div>
-                    <span class="text-xs font-bold text-emerald-800 uppercase block" x-text="jakt.datum"></span>
-                    <h3 class="text-base font-bold text-stone-900" x-text="jakt.mark + (jakt.komplettering ? ' + ' + jakt.komplettering : '')"></h3>
-                  </div>
-                  <span class="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold" x-text="jakt.status"></span>
-                </div>
-
-                <div class="bg-stone-50 rounded-lg p-2 text-xs space-y-1">
-                  <div class="font-medium text-stone-800">👑 Jaktledare: <span class="font-bold" x-text="jakt.jaktledare"></span></div>
-                  <div class="text-stone-600">🍲 Lunch: <span x-text="jakt.lunch.plan + ' (' + jakt.lunch.ansvarig + ')'"></span></div>
-                  <div class="text-stone-600">🍷 Middag: <span x-text="jakt.middag.planerad ? jakt.middag.detaljer : 'Ej planerad'"></span></div>
-                </div>
-
-                <!-- ULTRAKOMPAKT DELTAGARLISTA -->
-                <div class="divide-y divide-stone-100 border-t border-b border-stone-100">
-                  <template x-for="d in jakt.deltagare" :key="d.namn">
-                    <div class="flex justify-between items-center py-1 text-xs">
-                      <div class="flex items-center gap-1.5">
-                        <span class="font-medium text-stone-800" x-text="d.namn"></span>
-                        <span class="text-[10px] text-stone-400" x-text="'• ' + d.roll"></span>
-                      </div>
-                      <span :class="{
-                        'bg-emerald-50 text-emerald-800 border-emerald-200': d.status === 'Ja',
-                        'bg-rose-50 text-rose-700 border-rose-200': d.status === 'Nej',
-                        'bg-amber-50 text-amber-800 border-amber-200': d.status === 'Tillfrågad'
-                      }" class="px-1.5 py-0.5 rounded text-[9px] font-semibold border" x-text="d.status"></span>
-                    </div>
-                  </template>
-                </div>
-              </div>
-            </template>
-          </section>
-
-          <!-- DELTAGARFLIK -->
-          <section x-show="activeTab === 'deltagare'" class="space-y-3">
-            <h2 class="text-xs font-bold text-stone-500 uppercase tracking-wider">Deltagare & Hundar</h2>
-            <div class="divide-y divide-stone-200 bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
-              <template x-for="person in deltagareLista" :key="person.id">
-                <div class="p-3 space-y-1">
-                  <div class="flex justify-between items-center">
-                    <span class="text-xs font-bold text-stone-900" x-text="person.namn"></span>
-                    <span class="text-[9px] bg-stone-100 px-1.5 py-0.5 rounded text-stone-600" x-text="person.roller.join(', ')"></span>
-                  </div>
-                  <template x-if="person.hundar.length > 0">
-                    <div class="text-[11px] text-emerald-900 bg-emerald-50/60 p-1.5 rounded border border-emerald-100">
-                      <span font-semibold x-text="'🐕 ' + person.hundar[0].namn"></span>
-                      <span class="text-stone-500 text-[10px]" x-text="' (' + person.hundar[0].ras + ', f. ' + person.hundar[0].foddYear + ')'"></span>
-                    </div>
-                  </template>
-                </div>
-              </template>
-            </div>
-          </section>
-        </main>
-      </div>
-    </template>
-
-    <!-- VY 2: ÖVRIGA DELTAGARE / GÄSTVY (INGEN INLOGGNING) -->
-    <template x-if="!isLoggedIn">
-      <main class="p-4 space-y-4 flex-1">
-        
-        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 flex items-start gap-2">
-          <span>ℹ️</span>
-          <div>
-            <span class="font-bold block">Inbjudan till jakt</span>
-            <p class="text-[11px] text-amber-800">Du visar din personliga inbjudan. Ingen inloggning krävs.</p>
-          </div>
-        </div>
-
-        <!-- Specifik Jakt-kort för inbjuden deltagare -->
-        <div class="bg-white border border-stone-200 rounded-xl p-4 shadow-sm space-y-3">
-          <div class="border-b border-stone-100 pb-2">
-            <span class="text-xs font-bold text-emerald-800 uppercase block" x-text="gastJakt.datum"></span>
-            <h2 class="text-lg font-bold text-stone-900" x-text="gastJakt.mark + (gastJakt.komplettering ? ' + ' + gastJakt.komplettering : '')"></h2>
-          </div>
-
-          <!-- Information -->
-          <div class="bg-stone-50 rounded-lg p-3 text-xs space-y-2 border border-stone-150">
-            <div class="flex justify-between">
-              <span class="text-stone-500">👑 Jaktledare:</span>
-              <span class="font-bold text-stone-800" x-text="gastJakt.jaktledare"></span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-stone-500">🍲 Lunch:</span>
-              <span class="font-medium text-stone-800" x-text="gastJakt.lunch.plan + ' (' + gastJakt.lunch.ansvarig + ')'"></span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-stone-500">🍷 Middag:</span>
-              <span class="font-medium text-stone-800" x-text="gastJakt.middag.planerad ? gastJakt.middag.detaljer : 'Ej planerad'"></span>
-            </div>
-          </div>
-
-          <!-- Svarsfunktion för gästen -->
-          <div class="pt-2">
-            <h3 class="text-xs font-bold text-stone-700 mb-2">Din OAVKORTADE status:</h3>
-            <div class="grid grid-cols-2 gap-2">
-              <button @click="minStatus = 'Ja'" :class="minStatus === 'Ja' ? 'bg-emerald-800 text-white font-bold ring-2 ring-emerald-600' : 'bg-stone-100 text-stone-700'" class="py-2.5 rounded-lg text-xs transition-all">
-                ✓ Jag kommer
-              </button>
-              <button @click="minStatus = 'Nej'" :class="minStatus === 'Nej' ? 'bg-rose-700 text-white font-bold ring-2 ring-rose-500' : 'bg-stone-100 text-stone-700'" class="py-2.5 rounded-lg text-xs transition-all">
-                ✕ Kan ej
-              </button>
-            </div>
-          </div>
-        </div>
-
-      </main>
-    </template>
-
-  </div>
-
-  <script>
-    function jaktApp() {
-      return {
-        isLoggedIn: false, // Default: Gästvy utan inloggning
-        activeTab: 'schema',
-        showModal: false,
-        minStatus: 'Tillfrågad',
-
-        // Data för inbjuden enskild jakt (Gästvy)
-        gastJakt: {
-          datum: 'Lördag 17 Oktober 2026',
-          mark: 'Fän',
-          komplettering: 'Skogsö',
-          jaktledare: 'Erik Andersson',
-          lunch: { ansvarig: 'Johan', plan: 'Gulaschsoppa vid grillplatsen' },
-          middag: { planerad: true, detaljer: 'Viltgryta i stugan kl 19:00' }
-        },
-
-        // Fullständig data (Jaktledningsvy)
-        jakter: [
-          {
-            id: 1,
-            datum: 'Lördag 17 Oktober 2026',
-            mark: 'Fän',
-            komplettering: 'Skogsö',
-            jaktledare: 'Erik Andersson',
-            status: 'Planerad',
-            lunch: { ansvarig: 'Johan', plan: 'Gulaschsoppa vid grillplatsen' },
-            middag: { planerad: true, detaljer: 'Viltgryta i stugan kl 19:00' },
-            deltagare: [
-              { namn: 'Erik Andersson', roll: 'Hundförare', status: 'Ja' },
-              { namn: 'Karl Nilsson', roll: 'Kulskytt', status: 'Ja' },
-              { namn: 'Anna Berg', roll: 'Hagelskytt', status: 'Tillfrågad' }
-            ]
-          }
-        ],
-
-        deltagareLista: [
-          { id: 1, namn: 'Erik Andersson', roller: ['Kulskytt', 'Hundförare'], hundar: [{ namn: 'Rocky', ras: 'Jämthund', foddYear: 2021 }] },
-          { id: 2, namn: 'Karl Nilsson', roller: ['Hagelskytt'], hundar: [] }
-        ],
-
-       <!DOCTYPE html>
-<html lang="sv">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fän Jaktlag - Säsongsplanering</title>
-  <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>[x-cloak] { display: none !important; }</style>
 </head>
 <body class="bg-stone-100 text-stone-800 min-h-screen font-sans antialiased">
 
-  <div x-data="jaktApp()" class="max-w-md mx-auto min-h-screen flex flex-col bg-white border-x border-stone-200 shadow-sm relative">
+  <div x-data="jaktApp()" x-init="init()" class="max-w-md mx-auto min-h-screen flex flex-col bg-white border-x border-stone-200 shadow-sm relative">
     
-    <!-- HEADER MED INLOGGNINGSSTATUS -->
+    <!-- HEADER -->
     <header class="bg-emerald-800 text-white p-3.5 sticky top-0 z-20 shadow-sm flex justify-between items-center">
       <div>
         <h1 class="text-base font-bold tracking-tight">Fän Jaktlag</h1>
-        <p class="text-[11px] text-emerald-200" x-text="isLoggedIn ? 'Inloggad: Jaktledningen' : 'Gästvy (Inbjudan)'"></p>
+        <p class="text-[11px] text-emerald-200" x-text="isLoggedIn ? 'Inloggad: ' + userEmail : 'Gästvy (Inbjudan)'"></p>
       </div>
 
-      <!-- Demo-knapp för att simulera Google-inloggning -->
       <div>
         <template x-if="!isLoggedIn">
-          <button @click="simuleraGoogleLogin()" class="bg-white text-emerald-900 hover:bg-emerald-50 text-[11px] font-bold px-2.5 py-1.5 rounded-lg shadow flex items-center gap-1.5 transition-colors">
+          <button @click="loginWithGoogle()" class="bg-white text-emerald-900 hover:bg-emerald-50 text-[11px] font-bold px-2.5 py-1.5 rounded-lg shadow flex items-center gap-1.5 transition-colors">
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
             Logga in
           </button>
         </template>
         <template x-if="isLoggedIn">
-          <button @click="isLoggedIn = false" class="bg-emerald-900/80 text-emerald-100 hover:bg-emerald-900 text-[10px] px-2 py-1 rounded border border-emerald-700">
+          <button @click="logout()" class="bg-emerald-900/80 text-emerald-100 hover:bg-emerald-900 text-[10px] px-2 py-1 rounded border border-emerald-700">
             Logga ut
           </button>
         </template>
       </div>
     </header>
 
-    <!-- VY 1: JAKTLEDNINGEN (FULLEDIG ÅTKOMST) -->
+    <!-- VY 1: JAKTLEDNINGEN -->
     <template x-if="isLoggedIn">
       <div class="flex-1 flex flex-col">
-        <!-- Navigation Tabs -->
         <nav class="flex border-b border-stone-200 bg-stone-50 sticky top-[53px] z-10">
           <button @click="activeTab = 'schema'" :class="activeTab === 'schema' ? 'border-emerald-700 text-emerald-900 font-semibold bg-white' : 'border-transparent text-stone-500'" class="flex-1 py-2.5 text-xs text-center border-b-2">
             Jaktschema
@@ -272,11 +51,11 @@
         </nav>
 
         <main class="p-4 space-y-4 flex-1">
-          <!-- SCHEMAFLIK -->
+          <!-- SCHEMA -->
           <section x-show="activeTab === 'schema'" class="space-y-3">
             <div class="flex justify-between items-center">
               <h2 class="text-xs font-bold text-stone-500 uppercase tracking-wider">Planerade Jakter</h2>
-              <button @click="showModal = true" class="bg-emerald-800 text-white text-xs px-2.5 py-1.5 rounded-lg font-semibold shadow-sm">
+              <button @click="openNewHuntModal()" class="bg-emerald-800 text-white text-xs px-2.5 py-1.5 rounded-lg font-semibold shadow-sm">
                 + Ny jakt
               </button>
             </div>
@@ -291,13 +70,12 @@
                   <span class="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold" x-text="jakt.status"></span>
                 </div>
 
-                <div class="bg-stone-50 rounded-lg p-2 text-xs space-y-1">
+                <div class="bg-stone-50 rounded-lg p-2 text-xs space-y-1 border border-stone-150">
                   <div class="font-medium text-stone-800">👑 Jaktledare: <span class="font-bold" x-text="jakt.jaktledare"></span></div>
                   <div class="text-stone-600">🍲 Lunch: <span x-text="jakt.lunch.plan + ' (' + jakt.lunch.ansvarig + ')'"></span></div>
                   <div class="text-stone-600">🍷 Middag: <span x-text="jakt.middag.planerad ? jakt.middag.detaljer : 'Ej planerad'"></span></div>
                 </div>
 
-                <!-- ULTRAKOMPAKT DELTAGARLISTA -->
                 <div class="divide-y divide-stone-100 border-t border-b border-stone-100">
                   <template x-for="d in jakt.deltagare" :key="d.namn">
                     <div class="flex justify-between items-center py-1 text-xs">
@@ -317,50 +95,81 @@
             </template>
           </section>
 
-          <!-- DELTAGARFLIK -->
+          <!-- DELTAGARE & HUNDAR -->
           <section x-show="activeTab === 'deltagare'" class="space-y-3">
             <h2 class="text-xs font-bold text-stone-500 uppercase tracking-wider">Deltagare & Hundar</h2>
             <div class="divide-y divide-stone-200 bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
               <template x-for="person in deltagareLista" :key="person.id">
-                <div class="p-3 space-y-1">
+                <div class="p-3 space-y-1.5">
                   <div class="flex justify-between items-center">
                     <span class="text-xs font-bold text-stone-900" x-text="person.namn"></span>
                     <span class="text-[9px] bg-stone-100 px-1.5 py-0.5 rounded text-stone-600" x-text="person.roller.join(', ')"></span>
                   </div>
-                  <template x-if="person.hundar.length > 0">
-                    <div class="text-[11px] text-emerald-900 bg-emerald-50/60 p-1.5 rounded border border-emerald-100">
-                      <span font-semibold x-text="'🐕 ' + person.hundar[0].namn"></span>
-                      <span class="text-stone-500 text-[10px]" x-text="' (' + person.hundar[0].ras + ', f. ' + person.hundar[0].foddYear + ')'"></span>
+                  <template x-if="person.hundar && person.hundar.length > 0">
+                    <div class="space-y-1">
+                      <template x-for="hund in person.hundar" :key="hund.namn">
+                        <div class="text-[11px] text-emerald-900 bg-emerald-50/70 p-1.5 rounded border border-emerald-100 flex justify-between">
+                          <span>🐕 <strong x-text="hund.namn"></strong> <span class="text-stone-500 text-[10px]" x-text="'(' + hund.ras + ', f. ' + hund.foddYear + ')'"></span></span>
+                          <span class="text-stone-400 text-[10px] italic" x-text="hund.kommentar"></span>
+                        </div>
+                      </template>
                     </div>
                   </template>
                 </div>
               </template>
             </div>
           </section>
+
+          <!-- JAKTRAPPORTER -->
+          <section x-show="activeTab === 'rapporter'" class="space-y-3">
+            <div class="flex justify-between items-center">
+              <h2 class="text-xs font-bold text-stone-500 uppercase tracking-wider">Genomförda Jakter</h2>
+              <button class="bg-emerald-800 text-white text-xs px-2.5 py-1.5 rounded-lg font-semibold shadow-sm">+ Ny rapport</button>
+            </div>
+            <template x-for="rapport in rapporter" :key="rapport.id">
+              <div class="bg-white border border-stone-200 rounded-xl p-3.5 shadow-sm space-y-2">
+                <div class="flex justify-between items-center border-b border-stone-100 pb-1.5">
+                  <div>
+                    <span class="text-xs font-bold text-emerald-800 uppercase" x-text="rapport.datum"></span>
+                    <h3 class="text-sm font-bold text-stone-900" x-text="rapport.mark"></h3>
+                  </div>
+                  <template x-if="rapport.eftersok">
+                    <span class="bg-amber-100 text-amber-800 border border-amber-300 text-[10px] px-2 py-0.5 rounded font-semibold">⚠️ Eftersök</span>
+                  </template>
+                </div>
+                <div class="space-y-1">
+                  <template x-for="vilt in rapport.falltVilt" :key="vilt.art">
+                    <div class="flex justify-between text-xs bg-stone-50 px-2 py-1 rounded border border-stone-200">
+                      <span class="text-emerald-900 font-semibold" x-text="vilt.antal + 'x ' + vilt.art"></span>
+                      <span class="text-stone-500 text-[11px]" x-text="vilt.pass + ' (' + vilt.skytt + ')'"></span>
+                    </div>
+                  </template>
+                </div>
+                <div class="text-xs bg-stone-50 p-2 rounded border border-stone-150 text-stone-600" x-text="rapport.observationer"></div>
+              </div>
+            </template>
+          </section>
         </main>
       </div>
     </template>
 
-    <!-- VY 2: ÖVRIGA DELTAGARE / GÄSTVY (INGEN INLOGGNING) -->
+    <!-- VY 2: GÄSTVY -->
     <template x-if="!isLoggedIn">
       <main class="p-4 space-y-4 flex-1">
-        
         <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 flex items-start gap-2">
           <span>ℹ️</span>
           <div>
             <span class="font-bold block">Inbjudan till jakt</span>
-            <p class="text-[11px] text-amber-800">Du visar din personliga inbjudan. Ingen inloggning krävs.</p>
+            <p class="text-[11px] text-amber-800">Du visar din personliga inbjudan. Logga in om du tillhör Jaktledningen.</p>
           </div>
         </div>
 
-        <!-- Specifik Jakt-kort för inbjuden deltagare -->
         <div class="bg-white border border-stone-200 rounded-xl p-4 shadow-sm space-y-3">
           <div class="border-b border-stone-100 pb-2">
             <span class="text-xs font-bold text-emerald-800 uppercase block" x-text="gastJakt.datum"></span>
             <h2 class="text-lg font-bold text-stone-900" x-text="gastJakt.mark + (gastJakt.komplettering ? ' + ' + gastJakt.komplettering : '')"></h2>
           </div>
 
-          <!-- Information -->
           <div class="bg-stone-50 rounded-lg p-3 text-xs space-y-2 border border-stone-150">
             <div class="flex justify-between">
               <span class="text-stone-500">👑 Jaktledare:</span>
@@ -376,34 +185,136 @@
             </div>
           </div>
 
-          <!-- Svarsfunktion för gästen -->
           <div class="pt-2">
-            <h3 class="text-xs font-bold text-stone-700 mb-2">Din OAVKORTADE status:</h3>
+            <h3 class="text-xs font-bold text-stone-700 mb-2">Din status:</h3>
             <div class="grid grid-cols-2 gap-2">
-              <button @click="minStatus = 'Ja'" :class="minStatus === 'Ja' ? 'bg-emerald-800 text-white font-bold ring-2 ring-emerald-600' : 'bg-stone-100 text-stone-700'" class="py-2.5 rounded-lg text-xs transition-all">
+              <button @click="minStatus = 'Ja'" :class="minStatus === 'Ja' ? 'bg-emerald-800 text-white font-bold' : 'bg-stone-100 text-stone-700'" class="py-2.5 rounded-lg text-xs">
                 ✓ Jag kommer
               </button>
-              <button @click="minStatus = 'Nej'" :class="minStatus === 'Nej' ? 'bg-rose-700 text-white font-bold ring-2 ring-rose-500' : 'bg-stone-100 text-stone-700'" class="py-2.5 rounded-lg text-xs transition-all">
+              <button @click="minStatus = 'Nej'" :class="minStatus === 'Nej' ? 'bg-rose-700 text-white font-bold' : 'bg-stone-100 text-stone-700'" class="py-2.5 rounded-lg text-xs">
                 ✕ Kan ej
               </button>
             </div>
           </div>
         </div>
-
       </main>
     </template>
+
+    <!-- MODAL: ETABLERA NY JAKT -->
+    <div x-show="showModal" x-cloak class="fixed inset-0 z-30 bg-stone-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div @click.away="showModal = false" class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl shadow-xl flex flex-col max-h-[90vh] overflow-hidden border border-stone-200">
+        <div class="bg-emerald-800 text-white p-4 flex justify-between items-center">
+          <div>
+            <h3 class="font-bold text-base">Etablera Ny Jakt</h3>
+            <p class="text-xs text-emerald-200">Fyll i detaljer och skicka inbjudan</p>
+          </div>
+          <button @click="showModal = false" class="text-emerald-200 hover:text-white text-lg font-bold px-2">✕</button>
+        </div>
+
+        <div class="p-4 overflow-y-auto space-y-3 text-xs">
+          <div>
+            <label class="block font-semibold text-stone-700 mb-1">Datum</label>
+            <input type="text" x-model="nyJakt.datum" placeholder="t.ex. Lördag 5 December 2026" class="w-full border border-stone-300 rounded-lg p-2 outline-none">
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block font-semibold text-stone-700 mb-1">Huvudmark</label>
+              <input type="text" x-model="nyJakt.mark" readonly class="w-full bg-stone-100 border border-stone-300 rounded-lg p-2 font-semibold">
+            </div>
+            <div>
+              <label class="block font-semibold text-stone-700 mb-1">Komplettering</label>
+              <select x-model="nyJakt.komplettering" class="w-full border border-stone-300 rounded-lg p-2 bg-white">
+                <option value="">Endast Fän</option>
+                <option value="Borsö">Borsö</option>
+                <option value="Skogsö">Skogsö</option>
+                <option value="Jakt från båt">Jakt från båt</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block font-semibold text-stone-700 mb-1">👑 Jaktledare</label>
+            <select x-model="nyJakt.jaktledare" class="w-full border border-stone-300 rounded-lg p-2 bg-white font-medium">
+              <template x-for="person in deltagareLista" :key="person.namn">
+                <option :value="person.namn" x-text="person.namn"></option>
+              </template>
+            </select>
+          </div>
+        </div>
+
+        <div class="p-3 bg-stone-50 border-t border-stone-200 flex justify-end gap-2">
+          <button @click="showModal = false" class="px-3 py-1.5 border border-stone-300 text-stone-600 rounded-lg text-xs">Avbryt</button>
+          <button @click="sparaNyJakt()" class="px-4 py-1.5 bg-emerald-800 text-white rounded-lg font-semibold text-xs">Etablera & Bjud in</button>
+        </div>
+      </div>
+    </div>
 
   </div>
 
   <script>
+    const SUPABASE_URL = 'https://DIN-PROJEKT-REF.supabase.co';
+    const SUPABASE_ANON_KEY = 'DIN-SUPABASE-ANON-NYCKEL';
+    const JAKTLEDNINGEN_EMAILS = ['din.email@gmail.com'];
+
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
     function jaktApp() {
       return {
-        isLoggedIn: false, // Default: Gästvy utan inloggning
+        isLoggedIn: false,
+        userEmail: '',
         activeTab: 'schema',
         showModal: false,
         minStatus: 'Tillfrågad',
 
-        // Data för inbjuden enskild jakt (Gästvy)
+        nyJakt: { datum: '', mark: 'Fän', komplettering: '', jaktledare: 'Erik Andersson' },
+
+        async init() {
+          const { data: { session } } = await supabaseClient.auth.getSession();
+          this.checkUser(session);
+          supabaseClient.auth.onAuthStateChange((_event, session) => this.checkUser(session));
+        },
+
+        checkUser(session) {
+          if (session && session.user && JAKTLEDNINGEN_EMAILS.includes(session.user.email)) {
+            this.isLoggedIn = true;
+            this.userEmail = session.user.email;
+          } else {
+            this.isLoggedIn = false;
+            this.userEmail = '';
+          }
+        },
+
+        async loginWithGoogle() {
+          await supabaseClient.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: 'https://pettertiger.github.io/hunt/' }
+          });
+        },
+
+        async logout() {
+          await supabaseClient.auth.signOut();
+          this.isLoggedIn = false;
+          this.userEmail = '';
+        },
+
+        openNewHuntModal() { this.showModal = true; },
+
+        sparaNyJakt() {
+          if (!this.nyJakt.datum) return alert('Ange datum.');
+          this.jakter.unshift({
+            id: Date.now(),
+            datum: this.nyJakt.datum,
+            mark: this.nyJakt.mark,
+            komplettering: this.nyJakt.komplettering,
+            jaktledare: this.nyJakt.jaktledare,
+            status: 'Planerad',
+            lunch: { ansvarig: 'Ej angiven', plan: 'Ej angiven' },
+            middag: { planerad: false, detaljer: '' },
+            deltagare: []
+          });
+          this.showModal = false;
+          this.nyJakt.datum = '';
+        },
+
         gastJakt: {
           datum: 'Lördag 17 Oktober 2026',
           mark: 'Fän',
@@ -413,7 +324,6 @@
           middag: { planerad: true, detaljer: 'Viltgryta i stugan kl 19:00' }
         },
 
-        // Fullständig data (Jaktledningsvy)
         jakter: [
           {
             id: 1,
@@ -426,30 +336,26 @@
             middag: { planerad: true, detaljer: 'Viltgryta i stugan kl 19:00' },
             deltagare: [
               { namn: 'Erik Andersson', roll: 'Hundförare', status: 'Ja' },
-              { namn: 'Karl Nilsson', roll: 'Kulskytt', status: 'Ja' },
-              { namn: 'Anna Berg', roll: 'Hagelskytt', status: 'Tillfrågad' }
+              { namn: 'Karl Nilsson', roll: 'Kulskytt', status: 'Ja' }
             ]
           }
         ],
 
         deltagareLista: [
-          { id: 1, namn: 'Erik Andersson', roller: ['Kulskytt', 'Hundförare'], hundar: [{ namn: 'Rocky', ras: 'Jämthund', foddYear: 2021 }] },
-          { id: 2, namn: 'Karl Nilsson', roller: ['Hagelskytt'], hundar: [] }
+          { id: 1, namn: 'Erik Andersson', roller: ['Kulskytt', 'Hundförare'], hundar: [{ namn: 'Rocky', ras: 'Jämthund', foddYear: 2021, kommentar: 'Duktig på älg' }] }
         ],
 
-       // Initiera Supabase-klienten (Nycklar hämtas från Supabase -> Project Settings -> API)
-const supabaseClient = supabase.createClient('DIN_SUPABASE_URL', 'DIN_SUPABASE_ANON_KEY');
-
-async simuleraGoogleLogin() {
-  await supabaseClient.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo: 'https://pettertiger.github.io/hunt/' }
-  });
-}
-    }
-  </script>
-</body>
-</html>
+        rapporter: [
+          {
+            id: 101,
+            datum: '27 September 2026',
+            mark: 'Fän',
+            eftersok: true,
+            falltVilt: [{ art: 'Råbock', antal: 1, pass: 'Pass 4', skytt: 'Erik Andersson' }],
+            observationer: 'Obs 3 rådjur, 1 älgko med kalv.'
+          }
+        ]
+      }
     }
   </script>
 </body>

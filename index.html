@@ -61,10 +61,11 @@
             </div>
 
             <template x-for="jakt in jakter" :key="jakt.id">
-              <div class="bg-white border border-stone-200 rounded-xl p-3 shadow-sm space-y-2.5">
+              <button type="button" @click="selectHunt(jakt)" class="bg-white border border-stone-200 rounded-xl p-3 shadow-sm space-y-2.5 cursor-pointer hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 text-left w-full">
                 <div class="flex justify-between items-start border-b border-stone-100 pb-2">
                   <div>
                     <span class="text-xs font-bold text-emerald-800 uppercase block" x-text="jakt.datum"></span>
+
                     <h3 class="text-base font-bold text-stone-900" x-text="jakt.mark + (jakt.komplettering ? ' + ' + jakt.komplettering : '')"></h3>
                   </div>
                   <span class="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold" x-text="jakt.status"></span>
@@ -91,7 +92,7 @@
                     </div>
                   </template>
                 </div>
-              </div>
+              </button>
             </template>
           </section>
 
@@ -150,6 +151,45 @@
             </template>
           </section>
         </main>
+      </div>
+    </template>
+
+    <template x-if="selectedHunt">
+      <div x-cloak class="fixed inset-0 z-30 bg-stone-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <section @click.away="selectedHunt = null" class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden border border-stone-200">
+          <header class="bg-emerald-800 text-white p-4 flex justify-between items-start">
+            <div>
+              <p class="text-[10px] uppercase tracking-wider text-emerald-200">Jaktkort</p>
+              <h2 class="font-bold text-lg" x-text="selectedHunt.mark"></h2>
+              <p class="text-xs text-emerald-100" x-text="selectedHunt.datum"></p>
+            </div>
+            <button @click="selectedHunt = null" aria-label="Stäng jaktkort" class="text-emerald-100 text-xl">×</button>
+          </header>
+          <div class="p-4 space-y-4 text-xs">
+            <div class="flex justify-between items-center">
+              <span class="text-stone-500">Status</span>
+              <span class="bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold" x-text="selectedHunt.status"></span>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div class="bg-stone-50 border border-stone-200 rounded-lg p-2"><p class="text-stone-500">Mark</p><p class="font-semibold text-stone-900" x-text="selectedHunt.mark"></p></div>
+              <div class="bg-stone-50 border border-stone-200 rounded-lg p-2"><p class="text-stone-500">Jaktledare</p><p class="font-semibold text-stone-900" x-text="selectedHunt.jaktledare"></p></div>
+            </div>
+            <div>
+              <p class="font-semibold text-stone-700 mb-2">Din RSVP</p>
+              <div class="grid grid-cols-3 gap-2">
+                <button @click="setRsvp('yes')" :aria-pressed="selectedHunt.myRsvp === 'yes'" :class="selectedHunt.myRsvp === 'yes' ? 'bg-emerald-800 text-white ring-2 ring-emerald-300' : 'bg-stone-100 text-stone-700'" class="py-2 rounded-lg font-semibold">Ja</button>
+                <button @click="setRsvp('unsure')" :aria-pressed="selectedHunt.myRsvp === 'unsure'" :class="selectedHunt.myRsvp === 'unsure' ? 'bg-amber-600 text-white ring-2 ring-amber-300' : 'bg-stone-100 text-stone-700'" class="py-2 rounded-lg font-semibold">Osäker</button>
+                <button @click="setRsvp('no')" :aria-pressed="selectedHunt.myRsvp === 'no'" :class="selectedHunt.myRsvp === 'no' ? 'bg-rose-700 text-white ring-2 ring-rose-300' : 'bg-stone-100 text-stone-700'" class="py-2 rounded-lg font-semibold">Nej</button>
+              </div>
+              <p role="status" class="mt-2 text-[10px] font-semibold" :class="{
+                'text-stone-500': rsvpSaveState === 'saving',
+                'text-emerald-700': rsvpSaveState === 'saved',
+                'text-rose-700': rsvpSaveState === 'error'
+              }" x-text="rsvpSaveMessage"></p>
+            </div>
+            <label class="block"><span class="font-semibold text-stone-700">Privat kommentar</span><textarea x-model="selectedHunt.myComment" @change="saveRsvp()" rows="3" placeholder="Syns bara för dig och jaktledningen" class="mt-1 w-full border border-stone-300 rounded-lg p-2 outline-none focus:border-emerald-600"></textarea></label>
+          </div>
+        </section>
       </div>
     </template>
 
@@ -263,6 +303,9 @@
         userEmail: '',
         activeTab: 'schema',
         showModal: false,
+        selectedHunt: null,
+        rsvpSaveState: 'idle',
+        rsvpSaveMessage: '',
         minStatus: 'Tillfrågad',
 
         nyJakt: { datum: '', mark: 'Fän', komplettering: '', jaktledare: 'Erik Andersson' },
@@ -321,6 +364,40 @@
         },
 
         openNewHuntModal() { this.showModal = true; },
+
+        selectHunt(hunt) {
+          this.selectedHunt = hunt;
+          this.rsvpSaveState = 'idle';
+          this.rsvpSaveMessage = hunt.myRsvp && hunt.myRsvp !== 'unanswered' ? 'Ditt svar är sparat.' : '';
+          if (!this.selectedHunt.myRsvp) this.selectedHunt.myRsvp = 'unanswered';
+          if (!this.selectedHunt.myComment) this.selectedHunt.myComment = '';
+        },
+
+        async setRsvp(response) {
+          if (!this.selectedHunt) return;
+          this.selectedHunt.myRsvp = response;
+          await this.saveRsvp();
+        },
+
+        async saveRsvp() {
+          if (!supabaseClient || !this.selectedHunt || typeof this.selectedHunt.id !== 'string') return;
+          this.rsvpSaveState = 'saving';
+          this.rsvpSaveMessage = 'Sparar ditt svar...';
+          const { error } = await supabaseClient.rpc('set_my_hunt_response', {
+            target_hunt_id: this.selectedHunt.id,
+            target_response: this.selectedHunt.myRsvp,
+            target_comment: this.selectedHunt.myComment
+          });
+          if (error) {
+            this.rsvpSaveState = 'error';
+            this.rsvpSaveMessage = `Kunde inte spara: ${error.message}`;
+            return;
+          }
+          this.rsvpSaveState = 'saved';
+          this.rsvpSaveMessage = `Sparat kl. ${new Intl.DateTimeFormat('sv-SE', {
+            hour: '2-digit', minute: '2-digit'
+          }).format(new Date())}`;
+        },
 
         sparaNyJakt() {
           if (!this.nyJakt.datum) return alert('Ange datum.');

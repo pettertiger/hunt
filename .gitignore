@@ -1,1 +1,4 @@
-testdata/*.pdf
+testdata/
+supabase/bootstrap/initial-pass-positions.sql
+supabase/bootstrap/initial-pass-positions-import.sql
+supabase/bootstrap/initial-pass-positions-import.sql

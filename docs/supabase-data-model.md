@@ -16,7 +16,7 @@ Alla lagägda poster ska bära `team_id` eller nå laget via sin förälder. Dat
 ## Marker, kartor och pass
 
 - `marks`: jaktlagets marker. Fän är första marken.
-- `mark_map_versions`: en PDF-version per uppladdning, med lagringsnyckel, versionsnummer, uppladdare och datum. PDF-filer lagras i en privat Supabase Storage-bucket. Endast jaktledare får hantera filer; deltagarlänkar hämtar signerade länkar via serverfunktion.
+- `mark_map_versions`: en PDF-version per uppladdning, med lagringsnyckel, versionsnummer, uppladdare och datum. PDF-originalet och en rasteriserad `.preview.png`-systerfil lagras i den privata Supabase Storage-bucketen; editorn visar förhandsbilden för snabb och tillförlitlig mobilrendering. Endast jaktledare får hantera filer; deltagarlänkar hämtar signerade länkar via serverfunktion.
 - `passes`: namngivna pass som tillhör en mark och har ett stabilt ID oberoende av kartversion.
 - `pass_positions`: passets relativa `x`- och `y`-position på en specifik kartversion. Koordinaterna normaliseras till intervallet `0..1`; de är inte GPS-koordinater.
 

@@ -141,7 +141,7 @@
             </div>
 
             <template x-for="jakt in jakter" :key="jakt.id">
-              <button type="button" @click="selectHunt(jakt)" class="bg-white border border-stone-200 rounded-xl p-3 shadow-sm space-y-2.5 cursor-pointer hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 text-left w-full">
+              <div class="bg-white border border-stone-200 rounded-xl p-3 shadow-sm space-y-2.5">
                 <div class="flex justify-between items-start border-b border-stone-100 pb-2">
                   <div>
                     <span class="text-xs font-bold text-emerald-800 uppercase block" x-text="jakt.datum"></span>
@@ -172,7 +172,12 @@
                     </div>
                   </template>
                 </div>
-              </button>
+                <div class="flex justify-end pt-1">
+                  <button type="button" @click.stop="selectHunt(jakt)" class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-900 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                    Öppna jaktkort <span aria-hidden="true">→</span>
+                  </button>
+                </div>
+              </div>
             </template>
           </section>
 

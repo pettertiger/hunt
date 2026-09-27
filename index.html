@@ -7,7 +7,87 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-  <style>[x-cloak] { display: none !important; }</style>
+  <style>
+    [x-cloak] { display: none !important; }
+
+    :root {
+      --night: #102a43;
+      --ocean: #176b87;
+      --sky: #dff2f8;
+      --mist: #f4f8fb;
+      --ink: #183247;
+      --line: #d7e4ec;
+      --gold: #d9a441;
+    }
+
+    body {
+      background: linear-gradient(135deg, #e8f2f7 0%, #f8fbfd 52%, #e4f0f5 100%) !important;
+      color: var(--ink) !important;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+    }
+
+    [x-data="jaktApp()"] {
+      background: var(--mist) !important;
+      border-color: var(--line) !important;
+      box-shadow: 0 20px 60px #17405a18 !important;
+    }
+
+    .bg-emerald-800 { background-color: var(--night) !important; }
+    .bg-emerald-900\/80 { background-color: #0b2033cc !important; }
+    .bg-emerald-50 { background-color: var(--sky) !important; }
+    .bg-stone-50 { background-color: #edf5f8 !important; }
+    .bg-stone-100 { background-color: #e6f0f4 !important; }
+    .text-emerald-800, .text-emerald-900 { color: var(--ocean) !important; }
+    .text-emerald-200, .text-emerald-100 { color: #b9dce7 !important; }
+    .text-stone-800, .text-stone-900 { color: var(--ink) !important; }
+    .text-stone-500, .text-stone-600 { color: #607889 !important; }
+    .border-emerald-200, .border-emerald-700 { border-color: #a9d3df !important; }
+    .border-stone-100, .border-stone-200, .border-stone-300 { border-color: var(--line) !important; }
+
+    header {
+      background: linear-gradient(115deg, #102a43, #155b75) !important;
+      box-shadow: 0 8px 22px #102a4333 !important;
+    }
+
+    nav {
+      background: #f7fbfd !important;
+      border-color: var(--line) !important;
+    }
+
+    nav button {
+      min-height: 46px;
+      letter-spacing: .01em;
+    }
+
+    main { background: transparent; }
+
+    main section > div[class*="rounded-xl"],
+    main section > div[class*="rounded-xl"] {
+      border-radius: 16px;
+      box-shadow: 0 8px 24px #17405a0d;
+    }
+
+    button {
+      transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease;
+    }
+
+    button:hover:not(:disabled) {
+      box-shadow: 0 5px 14px #17405a1c;
+    }
+
+    button:active:not(:disabled) { transform: translateY(1px); }
+
+    input, textarea, select {
+      border-color: var(--line) !important;
+      background: #fff !important;
+      color: var(--ink) !important;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--ocean) !important;
+      box-shadow: 0 0 0 3px #176b8724;
+    }
+  </style>
 </head>
 <body class="bg-stone-100 text-stone-800 min-h-screen font-sans antialiased">
 

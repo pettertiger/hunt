@@ -453,7 +453,9 @@
         selectHunt(hunt) {
           this.selectedHunt = hunt;
           this.rsvpSaveState = 'idle';
-          this.rsvpSaveMessage = hunt.myRsvp && hunt.myRsvp !== 'unanswered' ? 'Ditt svar är sparat.' : '';
+          this.rsvpSaveMessage = hunt.myRsvp && hunt.myRsvp !== 'unanswered'
+            ? 'Ditt svar är sparat.'
+            : 'Inget svar sparat ännu.';
           if (!this.selectedHunt.myRsvp) this.selectedHunt.myRsvp = 'unanswered';
           if (!this.selectedHunt.myComment) this.selectedHunt.myComment = '';
         },

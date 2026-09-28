@@ -263,6 +263,18 @@
               <span>Öppna passkarta</span>
               <span aria-hidden="true">↗</span>
             </a>
+            <template x-if="selectedHunt.passOptions && selectedHunt.passOptions.length">
+              <div class="rounded-lg border border-sky-200 bg-sky-50 p-3">
+                <label class="block font-semibold text-sky-950">Ditt pass i Drev 1</label>
+                <select x-model="selectedHunt.myPassId" @change="savePassAssignment()" class="mt-1 w-full rounded-lg border border-sky-200 px-2 py-2">
+                  <option value="">Välj pass</option>
+                  <template x-for="pass in selectedHunt.passOptions" :key="pass.id">
+                    <option :value="pass.id" x-text="pass.name"></option>
+                  </template>
+                </select>
+                <p role="status" class="mt-2 text-[10px] font-semibold text-sky-800" x-text="selectedHunt.passSaveMessage"></p>
+              </div>
+            </template>
             <div>
               <p class="font-semibold text-stone-700 mb-2">Din RSVP</p>
               <div class="grid grid-cols-3 gap-2">
@@ -420,11 +432,12 @@
         async loadHunts() {
           const { data, error } = await supabaseClient
             .from('hunts')
-            .select('id, title, hunt_date, status')
+            .select('id, title, hunt_date, status, team_id')
             .order('hunt_date', { ascending: true });
           if (error || !data || data.length === 0) return;
           this.jakter = data.map(hunt => ({
             id: hunt.id,
+            teamId: hunt.team_id,
             datum: new Intl.DateTimeFormat('sv-SE', {
               weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
             }).format(new Date(`${hunt.hunt_date}T12:00:00`)),
@@ -436,6 +449,34 @@
             middag: { planerad: false, detaljer: '' },
             deltagare: []
           }));
+          await Promise.all(this.jakter.map(hunt => this.loadDriveData(hunt)));
+        },
+
+        async loadDriveData(hunt) {
+          const { data: drives } = await supabaseClient
+            .from('drives').select('id, name').eq('hunt_id', hunt.id).eq('name', 'Drev 1').limit(1);
+          const drive = drives?.[0];
+          if (!drive) return;
+          const { data: passes } = await supabaseClient
+            .from('passes').select('id, name, mark_id').eq('team_id', hunt.teamId).eq('is_active', true).order('name');
+          hunt.driveId = drive.id;
+          hunt.passOptions = passes || [];
+          hunt.myPassId = '';
+          hunt.passSaveMessage = 'Ingen tilldelning ännu.';
+
+          const { data: userData } = await supabaseClient.auth.getUser();
+          const { data: person } = await supabaseClient
+            .from('people').select('id').eq('team_id', hunt.teamId).eq('auth_user_id', userData.user?.id).maybeSingle();
+          if (!person) return;
+          const { data: participant } = await supabaseClient
+            .from('hunt_participants').select('id').eq('hunt_id', hunt.id).eq('person_id', person.id).maybeSingle();
+          if (!participant) return;
+          const { data: assignment } = await supabaseClient
+            .from('drive_participants').select('pass_id').eq('drive_id', drive.id).eq('participant_id', participant.id).maybeSingle();
+          if (assignment?.pass_id) {
+            hunt.myPassId = assignment.pass_id;
+            hunt.passSaveMessage = 'Ditt pass är sparat.';
+          }
         },
 
         async loginWithGoogle() {
@@ -488,6 +529,18 @@
           this.rsvpSaveMessage = `Sparat kl. ${new Intl.DateTimeFormat('sv-SE', {
             hour: '2-digit', minute: '2-digit'
           }).format(new Date())}`;
+        },
+
+        async savePassAssignment() {
+          if (!supabaseClient || !this.selectedHunt?.driveId || !this.selectedHunt.myPassId) return;
+          this.selectedHunt.passSaveMessage = 'Sparar pass...';
+          const { error } = await supabaseClient.rpc('set_my_drive_assignment', {
+            target_drive_id: this.selectedHunt.driveId,
+            target_pass_id: this.selectedHunt.myPassId
+          });
+          this.selectedHunt.passSaveMessage = error
+            ? `Kunde inte spara: ${error.message}`
+            : 'Ditt pass är sparat.';
         },
 
         sparaNyJakt() {

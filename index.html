@@ -265,7 +265,14 @@
             </a>
             <template x-if="selectedHunt.passOptions && selectedHunt.passOptions.length">
               <div class="rounded-lg border border-sky-200 bg-sky-50 p-3">
-                <label class="block font-semibold text-sky-950">Ditt pass i Drev 1</label>
+                <div class="flex items-center justify-between mb-2">
+                  <div>
+                    <p class="text-[10px] uppercase tracking-wider text-sky-700">Tilldelning</p>
+                    <p class="font-bold text-sky-950">Drev 1</p>
+                  </div>
+                  <span class="rounded-full bg-white border border-sky-200 px-2.5 py-1 font-bold text-sky-900" x-text="selectedHunt.passOptions.find(pass => pass.id === selectedHunt.myPassId)?.name || 'Ej tilldelad'"></span>
+                </div>
+                <label class="block font-semibold text-sky-950">Byt pass</label>
                 <select x-model="selectedHunt.myPassId" @change="savePassAssignment()" class="mt-1 w-full rounded-lg border border-sky-200 px-2 py-2">
                   <option value="">Välj pass</option>
                   <template x-for="pass in selectedHunt.passOptions" :key="pass.id">

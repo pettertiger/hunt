@@ -259,10 +259,14 @@
               <div class="bg-stone-50 border border-stone-200 rounded-lg p-2"><p class="text-stone-500">Mark</p><p class="font-semibold text-stone-900" x-text="selectedHunt.mark"></p></div>
               <div class="bg-stone-50 border border-stone-200 rounded-lg p-2"><p class="text-stone-500">Jaktledare</p><p class="font-semibold text-stone-900" x-text="selectedHunt.jaktledare"></p></div>
             </div>
-            <a href="map-editor.html" target="_blank" rel="noopener" class="flex items-center justify-between rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2.5 font-bold text-cyan-900 hover:bg-cyan-100">
+            <a x-show="!selectedHunt.isBoatDrive" href="map-editor.html" target="_blank" rel="noopener" class="flex items-center justify-between rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2.5 font-bold text-cyan-900 hover:bg-cyan-100">
               <span>Öppna passkarta</span>
               <span aria-hidden="true">↗</span>
             </a>
+            <div x-show="selectedHunt.isBoatDrive" class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-blue-950">
+              <p class="font-bold">Jakt från båt</p>
+              <p class="mt-0.5 text-[10px] text-blue-800">Alla jagar från båt. Ingen pass- eller karttilldelning behövs.</p>
+            </div>
             <template x-if="selectedHunt.passOptions && selectedHunt.passOptions.length">
               <div class="rounded-lg border border-sky-200 bg-sky-50 p-3">
                 <div class="flex items-center justify-between mb-2">
@@ -503,6 +507,7 @@
             .from('drive_marks').select('mark_id, marks(name)').eq('drive_id', drive.id);
           const enabledMarkIds = (driveMarks || []).map(item => item.mark_id);
           hunt.driveMarks = (driveMarks || []).map(item => item.marks?.name).filter(Boolean);
+          hunt.isBoatDrive = hunt.driveMarks.includes('Jakt från båt');
           const { data: passes } = enabledMarkIds.length
             ? await supabaseClient.from('passes').select('id, name, mark_id').eq('team_id', hunt.teamId).eq('is_active', true).in('mark_id', enabledMarkIds).order('name')
             : { data: [] };

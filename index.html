@@ -287,10 +287,16 @@
                 <div class="flex items-center justify-between mb-2">
                   <div>
                     <p class="text-[10px] uppercase tracking-wider text-slate-500">Ledaröversikt</p>
-                    <p class="font-bold text-slate-900">Drev 1</p>
+                    <p class="font-bold text-slate-900">Valt drev</p>
                   </div>
-                  <span class="text-[10px] text-slate-500" x-text="selectedHunt.driveParticipants.length + ' deltagare'"></span>
+                  <select x-model="selectedHunt.selectedDriveName" @change="switchDrive(selectedHunt)" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-700">
+                    <template x-for="drive in selectedHunt.driveOptions" :key="drive.id">
+                      <option :value="drive.name" x-text="drive.name"></option>
+                    </template>
+                  </select>
                 </div>
+                <p class="mb-1 text-[10px] text-slate-500" x-text="selectedHunt.driveParticipants.length + ' deltagare i ' + selectedHunt.selectedDriveName"></p>
+                <p class="mb-2 text-[10px] text-slate-500" x-text="'Mark: ' + (selectedHunt.driveMarks?.join(', ') || 'Ingen mark kopplad')"></p>
                 <div class="divide-y divide-slate-200">
                   <template x-for="assignment in selectedHunt.driveParticipants" :key="assignment.id">
                     <div class="flex items-center justify-between gap-3 py-2">
@@ -486,13 +492,20 @@
           await Promise.all(this.jakter.map(hunt => this.loadDriveData(hunt)));
         },
 
-        async loadDriveData(hunt) {
+        async loadDriveData(hunt, requestedDriveName = 'Drev 1') {
           const { data: drives } = await supabaseClient
-            .from('drives').select('id, name').eq('hunt_id', hunt.id).eq('name', 'Drev 1').limit(1);
-          const drive = drives?.[0];
+            .from('drives').select('id, name').eq('hunt_id', hunt.id).order('sort_order');
+          hunt.driveOptions = drives || [];
+          const drive = (drives || []).find(item => item.name === requestedDriveName) || drives?.[0];
           if (!drive) return;
-          const { data: passes } = await supabaseClient
-            .from('passes').select('id, name, mark_id').eq('team_id', hunt.teamId).eq('is_active', true).order('name');
+          hunt.selectedDriveName = drive.name;
+          const { data: driveMarks } = await supabaseClient
+            .from('drive_marks').select('mark_id, marks(name)').eq('drive_id', drive.id);
+          const enabledMarkIds = (driveMarks || []).map(item => item.mark_id);
+          hunt.driveMarks = (driveMarks || []).map(item => item.marks?.name).filter(Boolean);
+          const { data: passes } = enabledMarkIds.length
+            ? await supabaseClient.from('passes').select('id, name, mark_id').eq('team_id', hunt.teamId).eq('is_active', true).in('mark_id', enabledMarkIds).order('name')
+            : { data: [] };
           hunt.driveId = drive.id;
           hunt.passOptions = passes || [];
           hunt.driveParticipants = [];
@@ -538,6 +551,10 @@
             hunt.myPassId = assignment.pass_id;
             hunt.passSaveMessage = 'Ditt pass är sparat.';
           }
+        },
+
+        async switchDrive(hunt) {
+          await this.loadDriveData(hunt, hunt.selectedDriveName);
         },
 
         async loginWithGoogle() {

@@ -298,7 +298,12 @@
                         <p class="truncate font-semibold text-slate-900" x-text="assignment.name"></p>
                         <p class="text-[10px] text-slate-500" x-text="assignment.response"></p>
                       </div>
-                      <span class="shrink-0 rounded-full bg-white border border-slate-200 px-2 py-1 text-[10px] font-bold text-slate-700" x-text="assignment.passName || 'Ej tilldelad'"></span>
+                      <select x-model="assignment.passId" @change="saveLeaderAssignment(assignment)" class="shrink-0 w-24 rounded-full bg-white border border-slate-200 px-2 py-1 text-[10px] font-bold text-slate-700">
+                        <option value="">Ej tilldelad</option>
+                        <template x-for="pass in selectedHunt.passOptions" :key="pass.id">
+                          <option :value="pass.id" x-text="pass.name"></option>
+                        </template>
+                      </select>
                     </div>
                   </template>
                 </div>
@@ -515,6 +520,7 @@
               name: participant.person_id ? nameById[participant.person_id] : participant.guest_name,
               response: participant.response,
               passName: assignment ? passNameById[assignment.pass_id] : '',
+              passId: assignment?.pass_id || '',
               assignmentStatus: assignment?.assignment_status || 'pending'
             };
           });
@@ -596,6 +602,22 @@
           this.selectedHunt.passSaveMessage = error
             ? `Kunde inte spara: ${error.message}`
             : 'Ditt pass är sparat.';
+        },
+
+        async saveLeaderAssignment(assignment) {
+          if (!supabaseClient || !this.selectedHunt?.driveId || !assignment.passId) return;
+          const { error } = await supabaseClient.rpc('set_drive_participant_assignment', {
+            target_drive_id: this.selectedHunt.driveId,
+            target_participant_id: assignment.id,
+            target_pass_id: assignment.passId
+          });
+          if (error) {
+            assignment.passId = '';
+            assignment.passName = '';
+            alert(`Kunde inte spara passtilldelningen: ${error.message}`);
+            return;
+          }
+          assignment.passName = this.selectedHunt.passOptions.find(pass => pass.id === assignment.passId)?.name || '';
         },
 
         sparaNyJakt() {

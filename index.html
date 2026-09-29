@@ -504,9 +504,13 @@
           if (!drive) return;
           hunt.selectedDriveName = drive.name;
           const { data: driveMarks } = await supabaseClient
-            .from('drive_marks').select('mark_id, marks(name)').eq('drive_id', drive.id);
+            .from('drive_marks').select('mark_id').eq('drive_id', drive.id);
           const enabledMarkIds = (driveMarks || []).map(item => item.mark_id);
-          hunt.driveMarks = (driveMarks || []).map(item => item.marks?.name).filter(Boolean);
+          const { data: marks } = enabledMarkIds.length
+            ? await supabaseClient.from('marks').select('id, name').in('id', enabledMarkIds)
+            : { data: [] };
+          const markNameById = Object.fromEntries((marks || []).map(mark => [mark.id, mark.name]));
+          hunt.driveMarks = enabledMarkIds.map(markId => markNameById[markId]).filter(Boolean);
           hunt.isBoatDrive = hunt.driveMarks.includes('Jakt från båt');
           const { data: passes } = enabledMarkIds.length
             ? await supabaseClient.from('passes').select('id, name, mark_id').eq('team_id', hunt.teamId).eq('is_active', true).in('mark_id', enabledMarkIds).order('name')

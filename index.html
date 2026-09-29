@@ -319,6 +319,66 @@
                 </div>
               </div>
             </template>
+            <template x-if="selectedHunt.driveDogs">
+              <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <div class="flex items-center justify-between mb-2">
+                  <div>
+                    <p class="text-[10px] uppercase tracking-wider text-amber-700">Hundar och hundförare</p>
+                    <p class="font-bold text-amber-950" x-text="selectedHunt.selectedDriveName"></p>
+                  </div>
+                  <span class="text-[10px] text-amber-700" x-text="selectedHunt.driveDogs.length + ' hundar'"></span>
+                </div>
+                <template x-if="selectedHunt.driveDogs.length === 0">
+                  <p class="text-xs text-amber-800">Ingen hund är registrerad för detta drev ännu.</p>
+                </template>
+                <div class="divide-y divide-amber-200">
+                  <template x-for="dog in selectedHunt.driveDogs" :key="dog.id">
+                    <div class="flex items-center justify-between gap-3 py-2">
+                      <div>
+                        <p class="font-semibold text-amber-950" x-text="dog.name"></p>
+                        <select x-model="dog.dogId" @change="updateDogAssignment(dog)" class="max-w-40 rounded-lg border border-amber-200 bg-white px-2 py-1 text-xs font-semibold text-amber-950">
+                          <option value="" disabled>Byt hund</option>
+                          <template x-for="option in selectedHunt.dogOptions" :key="option.id">
+                            <option :value="option.id" x-text="option.name"></option>
+                          </template>
+                        </select>
+                        <p class="text-[10px] text-amber-700" x-text="dog.breed || 'Ras ej angiven'"></p>
+                      </div>
+                      <select x-model="dog.handlerId" @change="updateDogAssignment(dog)" class="max-w-32 rounded-full bg-white border border-amber-200 px-2 py-1 text-[10px] font-bold text-amber-900">
+                        <option value="">Ingen förare</option>
+                        <template x-for="participant in selectedHunt.driveParticipants" :key="participant.id">
+                          <option :value="participant.id" x-text="participant.name"></option>
+                        </template>
+                      </select>
+                      <button type="button" @click="removeDogAssignment(dog)" class="text-[10px] font-bold text-rose-700 hover:text-rose-900">Ta bort</button>
+                    </div>
+                  </template>
+                </div>
+                <div class="mt-3 border-t border-amber-200 pt-3">
+                  <p class="mb-2 text-[10px] font-bold uppercase tracking-wider text-amber-700">Välj sparad hund</p>
+                  <select x-model="selectedHunt.selectedDogId" @change="saveExistingDog()" class="w-full rounded-lg border border-amber-200 px-2 py-2 text-xs">
+                    <option value="">Välj hund från jaktlaget</option>
+                    <template x-for="dog in selectedHunt.dogOptions" :key="dog.id">
+                      <option :value="dog.id" x-text="dog.name + (dog.breed ? ' · ' + dog.breed : '')"></option>
+                    </template>
+                  </select>
+                  <p role="status" class="mt-2 text-[10px] text-amber-800" x-text="selectedHunt.dogSaveMessage"></p>
+                  <p class="mt-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-amber-700">Eller registrera ny hund</p>
+                  <div class="grid grid-cols-2 gap-2">
+                    <input x-model="selectedHunt.newDogName" placeholder="Hundens namn" class="rounded-lg border border-amber-200 px-2 py-2 text-xs">
+                    <input x-model="selectedHunt.newDogBreed" placeholder="Ras" class="rounded-lg border border-amber-200 px-2 py-2 text-xs">
+                  </div>
+                  <select x-model="selectedHunt.newDogHandlerId" @change="selectedHunt.selectedDogId ? saveExistingDog() : null" class="mt-2 w-full rounded-lg border border-amber-200 px-2 py-2 text-xs">
+                    <option value="">Välj hundförare</option>
+                    <template x-for="participant in selectedHunt.driveParticipants" :key="participant.id">
+                      <option :value="participant.id" x-text="participant.name"></option>
+                    </template>
+                  </select>
+                  <button @click="saveDog()" class="mt-2 w-full rounded-lg bg-amber-700 px-3 py-2 text-xs font-bold text-white hover:bg-amber-800">Spara hund och hundförare</button>
+                  <p role="status" class="mt-2 text-[10px] text-amber-800" x-text="selectedHunt.dogSaveMessage"></p>
+                </div>
+              </div>
+            </template>
             <div>
               <p class="font-semibold text-stone-700 mb-2">Din RSVP</p>
               <div class="grid grid-cols-3 gap-2">
@@ -546,6 +606,36 @@
               assignmentStatus: assignment?.assignment_status || 'pending'
             };
           });
+          const { data: huntDogs } = await supabaseClient
+            .from('hunt_dogs').select('id, dog_id, guest_dog_name, guest_dog_breed').eq('hunt_id', hunt.id);
+          const dogIds = (huntDogs || []).map(dog => dog.dog_id).filter(Boolean);
+          const { data: dogs } = dogIds.length
+            ? await supabaseClient.from('dogs').select('id, name, breed').in('id', dogIds)
+            : { data: [] };
+          const dogById = Object.fromEntries((dogs || []).map(dog => [dog.id, dog]));
+          const { data: dogAssignments } = await supabaseClient
+            .from('drive_dog_assignments').select('hunt_dog_id, handler_participant_id').eq('drive_id', drive.id);
+          const handlerByDog = Object.fromEntries((dogAssignments || []).map(item => [item.hunt_dog_id, item.handler_participant_id]));
+          const assignedHuntDogIds = new Set((dogAssignments || []).map(item => item.hunt_dog_id));
+          hunt.driveDogs = (huntDogs || []).map(huntDog => {
+            const dog = huntDog.dog_id ? dogById[huntDog.dog_id] : null;
+            return {
+              id: huntDog.id,
+              name: dog?.name || huntDog.guest_dog_name || 'Namnlös hund',
+              breed: dog?.breed || huntDog.guest_dog_breed || '',
+              handler: nameById[handlerByDog[huntDog.id]] || '',
+              dogId: huntDog.dog_id || '',
+              handlerId: handlerByDog[huntDog.id] || ''
+            };
+          }).filter(dog => assignedHuntDogIds.has(dog.id));
+          hunt.newDogName = '';
+          hunt.newDogBreed = '';
+          hunt.newDogHandlerId = '';
+          const { data: dogOptions } = await supabaseClient
+            .from('dogs').select('id, name, breed').eq('team_id', hunt.teamId).eq('is_active', true).order('name');
+          hunt.dogOptions = dogOptions || [];
+          hunt.selectedDogId = '';
+          hunt.dogSaveMessage = '';
 
           const { data: userData } = await supabaseClient.auth.getUser();
           const { data: person } = await supabaseClient
@@ -632,6 +722,15 @@
 
         async saveLeaderAssignment(assignment) {
           if (!supabaseClient || !this.selectedHunt?.driveId || !assignment.passId) return;
+          const conflict = this.selectedHunt.driveParticipants.find(item =>
+            item.id !== assignment.id && item.passId === assignment.passId
+          );
+          if (conflict) {
+            assignment.passId = '';
+            assignment.passName = '';
+            alert(`Passet används redan av ${conflict.name} i ${this.selectedHunt.selectedDriveName}.`);
+            return;
+          }
           const { error } = await supabaseClient.rpc('set_drive_participant_assignment', {
             target_drive_id: this.selectedHunt.driveId,
             target_participant_id: assignment.id,
@@ -644,6 +743,69 @@
             return;
           }
           assignment.passName = this.selectedHunt.passOptions.find(pass => pass.id === assignment.passId)?.name || '';
+        },
+
+        async saveDog() {
+          if (!supabaseClient || !this.selectedHunt?.driveId || !this.selectedHunt.newDogName.trim()) return;
+          this.selectedHunt.dogSaveMessage = 'Sparar hund...';
+          const { error } = await supabaseClient.rpc('add_drive_dog', {
+            target_drive_id: this.selectedHunt.driveId,
+            target_name: this.selectedHunt.newDogName,
+            target_breed: this.selectedHunt.newDogBreed,
+            target_handler_participant_id: this.selectedHunt.newDogHandlerId || null
+          });
+          if (error) {
+            this.selectedHunt.dogSaveMessage = `Kunde inte spara: ${error.message}`;
+            return;
+          }
+          this.selectedHunt.dogSaveMessage = 'Hund och hundförare sparade.';
+          await this.loadDriveData(this.selectedHunt, this.selectedHunt.selectedDriveName);
+        },
+
+        async saveExistingDog() {
+          if (!supabaseClient || !this.selectedHunt?.driveId || !this.selectedHunt.selectedDogId) return;
+          if (!this.selectedHunt.newDogHandlerId) {
+            this.selectedHunt.dogSaveMessage = 'Välj hundförare innan hunden sparas.';
+            return;
+          }
+          this.selectedHunt.dogSaveMessage = 'Sparar hund...';
+          const { error } = await supabaseClient.rpc('add_existing_drive_dog', {
+            target_drive_id: this.selectedHunt.driveId,
+            target_dog_id: this.selectedHunt.selectedDogId,
+            target_handler_participant_id: this.selectedHunt.newDogHandlerId || null
+          });
+          if (error) {
+            this.selectedHunt.dogSaveMessage = `Kunde inte spara: ${error.message}`;
+            return;
+          }
+          this.selectedHunt.dogSaveMessage = 'Sparad hund tillagd i drevet.';
+          await this.loadDriveData(this.selectedHunt, this.selectedHunt.selectedDriveName);
+        },
+
+        async updateDogAssignment(dog) {
+          if (!supabaseClient || !this.selectedHunt?.driveId || !dog.dogId || !dog.handlerId) return;
+          const { error } = await supabaseClient.rpc('update_drive_dog_assignment', {
+            target_drive_id: this.selectedHunt.driveId,
+            target_hunt_dog_id: dog.id,
+            target_dog_id: dog.dogId,
+            target_handler_participant_id: dog.handlerId
+          });
+          if (error) alert(`Kunde inte uppdatera hundtilldelningen: ${error.message}`);
+          else await this.loadDriveData(this.selectedHunt, this.selectedHunt.selectedDriveName);
+        },
+
+        async removeDogAssignment(dog) {
+          if (!supabaseClient || !this.selectedHunt?.driveId) return;
+          if (!confirm(`Ta bort ${dog.name} från ${this.selectedHunt.selectedDriveName}?`)) return;
+          const { error } = await supabaseClient.rpc('remove_drive_dog_assignment', {
+            target_drive_id: this.selectedHunt.driveId,
+            target_hunt_dog_id: dog.id
+          });
+          if (error) {
+            alert(`Kunde inte ta bort hunden: ${error.message}`);
+            return;
+          }
+          await this.loadDriveData(this.selectedHunt, this.selectedHunt.selectedDriveName);
         },
 
         sparaNyJakt() {

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#17211f">
   <title>Fän | Passkarta</title>
+  <script src="config.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -481,7 +482,7 @@
         <h2>Anslut Supabase</h2>
       </div>
       <div class="dialog-body">
-        <p class="dialog-copy">Ange projektets publika URL och anon/publishable key. Värdena sparas endast i denna webbläsares localStorage. Lägg även till <code>http://localhost:8080/map-editor.html</code> under Supabase Auth → URL Configuration → Redirect URLs.</p>
+        <p class="dialog-copy">Ange projektets publika URL och anon/publishable key. Värdena sparas endast i denna webbläsares localStorage. Lägg till <code id="redirectUrlHint"></code> under Supabase Auth → URL Configuration → Redirect URLs.</p>
         <label class="field-label" for="projectUrlInput">Project URL</label>
         <input class="field-input" id="projectUrlInput" type="url" autocomplete="url" required>
         <label class="field-label" for="anonKeyInput">Publishable key / anon key</label>
@@ -505,7 +506,9 @@
       const storagePrefix = 'fan-pass-map:v1:';
       const projectUrlStorageKey = 'hunt-dev-project-url';
       const anonKeyStorageKey = 'hunt-dev-publishable-key';
-      const defaultProjectUrl = 'https://kfwxiinhhulskwveycea.supabase.co';
+      const configuredProjectUrl = window.HUNT_CONFIG?.supabaseUrl || '';
+      const configuredPublishableKey = window.HUNT_CONFIG?.publishableKey || '';
+      const defaultProjectUrl = configuredProjectUrl;
       const pdfInput = document.getElementById('pdfInput');
       const passList = document.getElementById('passList');
       const searchInput = document.getElementById('passSearch');
@@ -535,6 +538,7 @@
       const connectionForm = document.getElementById('connectionForm');
       const projectUrlInput = document.getElementById('projectUrlInput');
       const anonKeyInput = document.getElementById('anonKeyInput');
+      document.getElementById('redirectUrlHint').textContent = `${window.location.origin}${window.location.pathname}`;
       const cancelConnectionButton = document.getElementById('cancelConnectionButton');
       const saveNoticeTitle = document.getElementById('saveNoticeTitle');
       const saveNoticeText = document.getElementById('saveNoticeText');
@@ -696,8 +700,8 @@
       }
 
       async function restoreSupabaseSession() {
-        const projectUrl = localStorage.getItem(projectUrlStorageKey);
-        const anonKey = localStorage.getItem(anonKeyStorageKey);
+        const projectUrl = configuredProjectUrl || localStorage.getItem(projectUrlStorageKey);
+        const anonKey = configuredPublishableKey || localStorage.getItem(anonKeyStorageKey);
         if (!projectUrl || !anonKey) return false;
         try {
           createSupabaseClient(projectUrl, anonKey);
@@ -1313,8 +1317,8 @@
       });
 
       authSettingsButton.addEventListener('click', () => {
-        projectUrlInput.value = localStorage.getItem(projectUrlStorageKey) || defaultProjectUrl;
-        anonKeyInput.value = localStorage.getItem(anonKeyStorageKey) || '';
+        projectUrlInput.value = configuredProjectUrl || localStorage.getItem(projectUrlStorageKey) || defaultProjectUrl;
+        anonKeyInput.value = configuredPublishableKey || localStorage.getItem(anonKeyStorageKey) || '';
         connectionDialog.showModal();
       });
       cancelConnectionButton.addEventListener('click', () => connectionDialog.close());
@@ -1330,8 +1334,8 @@
       });
       authButton.addEventListener('click', async () => {
         if (!state.supabase) {
-          projectUrlInput.value = localStorage.getItem(projectUrlStorageKey) || defaultProjectUrl;
-          anonKeyInput.value = localStorage.getItem(anonKeyStorageKey) || '';
+          projectUrlInput.value = configuredProjectUrl || localStorage.getItem(projectUrlStorageKey) || defaultProjectUrl;
+          anonKeyInput.value = configuredPublishableKey || localStorage.getItem(anonKeyStorageKey) || '';
           connectionDialog.showModal();
           return;
         }

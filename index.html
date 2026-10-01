@@ -4,10 +4,91 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Fän Jaktlag - Säsongsplanering</title>
+  <script src="config.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-  <style>[x-cloak] { display: none !important; }</style>
+  <style>
+    [x-cloak] { display: none !important; }
+
+    :root {
+      --night: #102a43;
+      --ocean: #176b87;
+      --sky: #dff2f8;
+      --mist: #f4f8fb;
+      --ink: #183247;
+      --line: #d7e4ec;
+      --gold: #d9a441;
+    }
+
+    body {
+      background: linear-gradient(135deg, #e8f2f7 0%, #f8fbfd 52%, #e4f0f5 100%) !important;
+      color: var(--ink) !important;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+    }
+
+    [x-data="jaktApp()"] {
+      background: var(--mist) !important;
+      border-color: var(--line) !important;
+      box-shadow: 0 20px 60px #17405a18 !important;
+    }
+
+    .bg-emerald-800 { background-color: var(--night) !important; }
+    .bg-emerald-900\/80 { background-color: #0b2033cc !important; }
+    .bg-emerald-50 { background-color: var(--sky) !important; }
+    .bg-stone-50 { background-color: #edf5f8 !important; }
+    .bg-stone-100 { background-color: #e6f0f4 !important; }
+    .text-emerald-800, .text-emerald-900 { color: var(--ocean) !important; }
+    .text-emerald-200, .text-emerald-100 { color: #b9dce7 !important; }
+    .text-stone-800, .text-stone-900 { color: var(--ink) !important; }
+    .text-stone-500, .text-stone-600 { color: #607889 !important; }
+    .border-emerald-200, .border-emerald-700 { border-color: #a9d3df !important; }
+    .border-stone-100, .border-stone-200, .border-stone-300 { border-color: var(--line) !important; }
+
+    header {
+      background: linear-gradient(115deg, #102a43, #155b75) !important;
+      box-shadow: 0 8px 22px #102a4333 !important;
+    }
+
+    nav {
+      background: #f7fbfd !important;
+      border-color: var(--line) !important;
+    }
+
+    nav button {
+      min-height: 46px;
+      letter-spacing: .01em;
+    }
+
+    main { background: transparent; }
+
+    main section > div[class*="rounded-xl"],
+    main section > div[class*="rounded-xl"] {
+      border-radius: 16px;
+      box-shadow: 0 8px 24px #17405a0d;
+    }
+
+    button {
+      transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease;
+    }
+
+    button:hover:not(:disabled) {
+      box-shadow: 0 5px 14px #17405a1c;
+    }
+
+    button:active:not(:disabled) { transform: translateY(1px); }
+
+    input, textarea, select {
+      border-color: var(--line) !important;
+      background: #fff !important;
+      color: var(--ink) !important;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--ocean) !important;
+      box-shadow: 0 0 0 3px #176b8724;
+    }
+  </style>
 </head>
 <body class="bg-stone-100 text-stone-800 min-h-screen font-sans antialiased">
 
@@ -22,9 +103,9 @@
 
       <div>
         <template x-if="!isLoggedIn">
-          <button @click="loginWithGoogle()" class="bg-white text-emerald-900 hover:bg-emerald-50 text-[11px] font-bold px-2.5 py-1.5 rounded-lg shadow flex items-center gap-1.5 transition-colors">
+          <button @click="guestToken && guestUserEmail ? leaveGuestInvite() : loginWithGoogle()" class="bg-white text-emerald-900 hover:bg-emerald-50 text-[11px] font-bold px-2.5 py-1.5 rounded-lg shadow flex items-center gap-1.5 transition-colors">
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
-            Logga in
+            <span x-text="guestToken && guestUserEmail ? 'Till jaktledning' : 'Logga in'"></span>
           </button>
         </template>
         <template x-if="isLoggedIn">
@@ -65,6 +146,7 @@
                 <div class="flex justify-between items-start border-b border-stone-100 pb-2">
                   <div>
                     <span class="text-xs font-bold text-emerald-800 uppercase block" x-text="jakt.datum"></span>
+
                     <h3 class="text-base font-bold text-stone-900" x-text="jakt.mark + (jakt.komplettering ? ' + ' + jakt.komplettering : '')"></h3>
                   </div>
                   <span class="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold" x-text="jakt.status"></span>
@@ -90,6 +172,11 @@
                       }" class="px-1.5 py-0.5 rounded text-[9px] font-semibold border" x-text="d.status"></span>
                     </div>
                   </template>
+                </div>
+                <div class="flex justify-end pt-1">
+                  <button type="button" @click.stop="selectHunt(jakt)" class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-900 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                    Öppna jaktkort <span aria-hidden="true">→</span>
+                  </button>
                 </div>
               </div>
             </template>
@@ -124,7 +211,7 @@
           <section x-show="activeTab === 'rapporter'" class="space-y-3">
             <div class="flex justify-between items-center">
               <h2 class="text-xs font-bold text-stone-500 uppercase tracking-wider">Genomförda Jakter</h2>
-              <button class="bg-emerald-800 text-white text-xs px-2.5 py-1.5 rounded-lg font-semibold shadow-sm">+ Ny rapport</button>
+              <button @click="openReportModal()" class="bg-emerald-800 text-white text-xs px-2.5 py-1.5 rounded-lg font-semibold shadow-sm">+ Ny rapport</button>
             </div>
             <template x-for="rapport in rapporter" :key="rapport.id">
               <div class="bg-white border border-stone-200 rounded-xl p-3.5 shadow-sm space-y-2">
@@ -153,52 +240,279 @@
       </div>
     </template>
 
+    <template x-if="selectedHunt">
+      <div x-cloak class="fixed inset-0 z-30 bg-stone-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <section @click.away="selectedHunt = null" class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden border border-stone-200">
+          <header class="bg-emerald-800 text-white p-4 flex justify-between items-start">
+            <div>
+              <p class="text-[10px] uppercase tracking-wider text-emerald-200">Jaktkort</p>
+              <h2 class="font-bold text-lg" x-text="selectedHunt.mark"></h2>
+              <p class="text-xs text-emerald-100" x-text="selectedHunt.datum"></p>
+            </div>
+            <button @click="selectedHunt = null" aria-label="Stäng jaktkort" class="text-emerald-100 text-xl">×</button>
+          </header>
+          <div class="p-4 space-y-4 text-xs">
+            <div class="flex justify-between items-center">
+              <span class="text-stone-500">Status</span>
+              <span class="bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold" x-text="selectedHunt.status"></span>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div class="bg-stone-50 border border-stone-200 rounded-lg p-2"><p class="text-stone-500">Mark</p><p class="font-semibold text-stone-900" x-text="selectedHunt.mark"></p></div>
+              <div class="bg-stone-50 border border-stone-200 rounded-lg p-2"><p class="text-stone-500">Jaktledare</p><p class="font-semibold text-stone-900" x-text="selectedHunt.jaktledare"></p></div>
+            </div>
+            <a x-show="!selectedHunt.isBoatDrive" href="map-editor.html" target="_blank" rel="noopener" class="flex items-center justify-between rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2.5 font-bold text-cyan-900 hover:bg-cyan-100">
+              <span>Öppna passkarta</span>
+              <span aria-hidden="true">↗</span>
+            </a>
+            <div x-show="selectedHunt.isBoatDrive" class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-blue-950">
+              <p class="font-bold">Jakt från båt</p>
+              <p class="mt-0.5 text-[10px] text-blue-800">Alla jagar från båt. Ingen pass- eller karttilldelning behövs.</p>
+            </div>
+            <template x-if="selectedHunt.passOptions && selectedHunt.passOptions.length">
+              <div class="rounded-lg border border-sky-200 bg-sky-50 p-3">
+                <div class="flex items-center justify-between mb-2">
+                  <div>
+                    <p class="text-[10px] uppercase tracking-wider text-sky-700">Tilldelning</p>
+                    <p class="font-bold text-sky-950">Drev 1</p>
+                  </div>
+                  <span class="rounded-full bg-white border border-sky-200 px-2.5 py-1 font-bold text-sky-900" x-text="selectedHunt.passOptions.find(pass => pass.id === selectedHunt.myPassId)?.name || 'Ej tilldelad'"></span>
+                </div>
+                <label class="block font-semibold text-sky-950">Byt pass</label>
+                <select x-model="selectedHunt.myPassId" @change="savePassAssignment()" class="mt-1 w-full rounded-lg border border-sky-200 px-2 py-2">
+                  <option value="">Välj pass</option>
+                  <template x-for="pass in selectedHunt.passOptions" :key="pass.id">
+                    <option :value="pass.id" x-text="pass.name"></option>
+                  </template>
+                </select>
+                <p role="status" class="mt-2 text-[10px] font-semibold text-sky-800" x-text="selectedHunt.passSaveMessage"></p>
+              </div>
+            </template>
+            <template x-if="selectedHunt.driveParticipants">
+              <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <div class="flex items-center justify-between mb-2">
+                  <div>
+                    <p class="text-[10px] uppercase tracking-wider text-slate-500">Ledaröversikt</p>
+                    <p class="font-bold text-slate-900">Valt drev</p>
+                  </div>
+                  <select x-model="selectedHunt.selectedDriveName" @change="switchDrive(selectedHunt)" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-700">
+                    <template x-for="drive in selectedHunt.driveOptions" :key="drive.id">
+                      <option :value="drive.name" x-text="drive.name"></option>
+                    </template>
+                  </select>
+                </div>
+                <p class="mb-1 text-[10px] text-slate-500" x-text="selectedHunt.driveParticipants.length + ' deltagare i ' + selectedHunt.selectedDriveName"></p>
+                <p class="mb-2 text-[10px] text-slate-500" x-text="'Mark: ' + (selectedHunt.driveMarks?.join(', ') || 'Ingen mark kopplad')"></p>
+                <div class="divide-y divide-slate-200">
+                  <template x-for="assignment in selectedHunt.driveParticipants" :key="assignment.id">
+                    <div class="flex items-center justify-between gap-3 py-2">
+                      <div class="min-w-0">
+                        <p class="truncate font-semibold text-slate-900" x-text="assignment.name"></p>
+                        <p class="text-[10px] text-slate-500" x-text="assignment.response"></p>
+                      </div>
+                      <div class="flex shrink-0 flex-col items-end gap-1">
+                        <select x-model="assignment.passId" @change="saveLeaderAssignment(assignment)" class="w-24 rounded-full bg-white border border-slate-200 px-2 py-1 text-[10px] font-bold text-slate-700">
+                          <option value="">Ej tilldelad</option>
+                          <template x-for="pass in selectedHunt.passOptions" :key="pass.id">
+                            <option :value="pass.id" x-text="pass.name"></option>
+                          </template>
+                        </select>
+                        <button x-show="assignment.isGuest" type="button" @click="revokeGuestInvite(assignment)" class="text-[10px] font-semibold text-rose-700 hover:text-rose-900">Återkalla länk</button>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+                <div class="mt-3 border-t border-slate-200 pt-3">
+                  <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-600" for="guestInviteName">Bjud in gäst</label>
+                  <div class="mt-2 flex gap-2">
+                    <input id="guestInviteName" x-model="selectedHunt.newGuestName" maxlength="160" placeholder="Gästens namn" class="min-w-0 flex-1 rounded-lg border border-slate-200 px-2 py-2 text-xs">
+                    <button type="button" @click="createGuestInvite(selectedHunt)" :disabled="!selectedHunt.newGuestName.trim()" class="shrink-0 rounded-lg bg-slate-800 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Skapa länk</button>
+                  </div>
+                  <p role="status" class="mt-2 text-[10px] text-slate-600" x-text="selectedHunt.guestInviteMessage"></p>
+                  <template x-if="selectedHunt.guestInviteUrl">
+                    <div class="mt-2 flex gap-2">
+                      <input readonly aria-label="Gästlänk" :value="selectedHunt.guestInviteUrl" class="min-w-0 flex-1 rounded-lg border border-slate-200 px-2 py-2 text-[10px]">
+                      <button type="button" @click="copyGuestInvite(selectedHunt)" class="shrink-0 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold">Kopiera</button>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+            <template x-if="selectedHunt.driveDogs">
+              <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <div class="flex items-center justify-between mb-2">
+                  <div>
+                    <p class="text-[10px] uppercase tracking-wider text-amber-700">Hundar och hundförare</p>
+                    <p class="font-bold text-amber-950" x-text="selectedHunt.selectedDriveName"></p>
+                  </div>
+                  <span class="text-[10px] text-amber-700" x-text="selectedHunt.driveDogs.length + ' hundar'"></span>
+                </div>
+                <template x-if="selectedHunt.driveDogs.length === 0">
+                  <p class="text-xs text-amber-800">Ingen hund är registrerad för detta drev ännu.</p>
+                </template>
+                <div class="divide-y divide-amber-200">
+                  <template x-for="dog in selectedHunt.driveDogs" :key="dog.id">
+                    <div class="flex items-center justify-between gap-3 py-2">
+                      <div>
+                        <p class="font-semibold text-amber-950" x-text="dog.name"></p>
+                        <select x-model="dog.dogId" @change="updateDogAssignment(dog)" class="max-w-40 rounded-lg border border-amber-200 bg-white px-2 py-1 text-xs font-semibold text-amber-950">
+                          <option value="" disabled>Byt hund</option>
+                          <template x-for="option in selectedHunt.dogOptions" :key="option.id">
+                            <option :value="option.id" x-text="option.name"></option>
+                          </template>
+                        </select>
+                        <p class="text-[10px] text-amber-700" x-text="dog.breed || 'Ras ej angiven'"></p>
+                      </div>
+                      <select x-model="dog.handlerId" @change="updateDogAssignment(dog)" class="max-w-32 rounded-full bg-white border border-amber-200 px-2 py-1 text-[10px] font-bold text-amber-900">
+                        <option value="">Ingen förare</option>
+                        <template x-for="participant in selectedHunt.driveParticipants" :key="participant.id">
+                          <option :value="participant.id" x-text="participant.name"></option>
+                        </template>
+                      </select>
+                      <button type="button" @click="removeDogAssignment(dog)" class="text-[10px] font-bold text-rose-700 hover:text-rose-900">Ta bort</button>
+                    </div>
+                  </template>
+                </div>
+                <div class="mt-3 border-t border-amber-200 pt-3">
+                  <p class="mb-2 text-[10px] font-bold uppercase tracking-wider text-amber-700">Välj sparad hund</p>
+                  <select x-model="selectedHunt.selectedDogId" @change="saveExistingDog()" class="w-full rounded-lg border border-amber-200 px-2 py-2 text-xs">
+                    <option value="">Välj hund från jaktlaget</option>
+                    <template x-for="dog in selectedHunt.dogOptions" :key="dog.id">
+                      <option :value="dog.id" x-text="dog.name + (dog.breed ? ' · ' + dog.breed : '')"></option>
+                    </template>
+                  </select>
+                  <p role="status" class="mt-2 text-[10px] text-amber-800" x-text="selectedHunt.dogSaveMessage"></p>
+                  <p class="mt-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-amber-700">Eller registrera ny hund</p>
+                  <div class="grid grid-cols-2 gap-2">
+                    <input x-model="selectedHunt.newDogName" placeholder="Hundens namn" class="rounded-lg border border-amber-200 px-2 py-2 text-xs">
+                    <input x-model="selectedHunt.newDogBreed" placeholder="Ras" class="rounded-lg border border-amber-200 px-2 py-2 text-xs">
+                  </div>
+                  <select x-model="selectedHunt.newDogHandlerId" @change="selectedHunt.selectedDogId ? saveExistingDog() : null" class="mt-2 w-full rounded-lg border border-amber-200 px-2 py-2 text-xs">
+                    <option value="">Välj hundförare</option>
+                    <template x-for="participant in selectedHunt.driveParticipants" :key="participant.id">
+                      <option :value="participant.id" x-text="participant.name"></option>
+                    </template>
+                  </select>
+                  <button @click="saveDog()" class="mt-2 w-full rounded-lg bg-amber-700 px-3 py-2 text-xs font-bold text-white hover:bg-amber-800">Spara hund och hundförare</button>
+                  <p role="status" class="mt-2 text-[10px] text-amber-800" x-text="selectedHunt.dogSaveMessage"></p>
+                </div>
+              </div>
+            </template>
+            <div>
+              <p class="font-semibold text-stone-700 mb-2">Din RSVP</p>
+              <div class="grid grid-cols-3 gap-2">
+                <button @click="setRsvp('yes')" :aria-pressed="selectedHunt.myRsvp === 'yes'" :class="selectedHunt.myRsvp === 'yes' ? 'bg-emerald-800 text-white ring-2 ring-emerald-300' : 'bg-stone-100 text-stone-700'" class="py-2 rounded-lg font-semibold">Ja</button>
+                <button @click="setRsvp('unsure')" :aria-pressed="selectedHunt.myRsvp === 'unsure'" :class="selectedHunt.myRsvp === 'unsure' ? 'bg-amber-600 text-white ring-2 ring-amber-300' : 'bg-stone-100 text-stone-700'" class="py-2 rounded-lg font-semibold">Osäker</button>
+                <button @click="setRsvp('no')" :aria-pressed="selectedHunt.myRsvp === 'no'" :class="selectedHunt.myRsvp === 'no' ? 'bg-rose-700 text-white ring-2 ring-rose-300' : 'bg-stone-100 text-stone-700'" class="py-2 rounded-lg font-semibold">Nej</button>
+              </div>
+              <p role="status" class="mt-2 text-[10px] font-semibold" :class="{
+                'text-stone-500': rsvpSaveState === 'saving',
+                'text-emerald-700': rsvpSaveState === 'saved',
+                'text-rose-700': rsvpSaveState === 'error'
+              }" x-text="rsvpSaveMessage"></p>
+            </div>
+            <label class="block"><span class="font-semibold text-stone-700">Privat kommentar</span><textarea x-model="selectedHunt.myComment" @change="saveRsvp()" rows="3" placeholder="Syns bara för dig och jaktledningen" class="mt-1 w-full border border-stone-300 rounded-lg p-2 outline-none focus:border-emerald-600"></textarea></label>
+          </div>
+        </section>
+      </div>
+    </template>
+
     <!-- VY 2: GÄSTVY -->
     <template x-if="!isLoggedIn">
-      <main class="p-4 space-y-4 flex-1">
-        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 flex items-start gap-2">
-          <span>ℹ️</span>
-          <div>
-            <span class="font-bold block">Inbjudan till jakt</span>
-            <p class="text-[11px] text-amber-800">Du visar din personliga inbjudan. Logga in om du tillhör Jaktledningen.</p>
-          </div>
-        </div>
-
-        <div class="bg-white border border-stone-200 rounded-xl p-4 shadow-sm space-y-3">
-          <div class="border-b border-stone-100 pb-2">
-            <span class="text-xs font-bold text-emerald-800 uppercase block" x-text="gastJakt.datum"></span>
-            <h2 class="text-lg font-bold text-stone-900" x-text="gastJakt.mark + (gastJakt.komplettering ? ' + ' + gastJakt.komplettering : '')"></h2>
-          </div>
-
-          <div class="bg-stone-50 rounded-lg p-3 text-xs space-y-2 border border-stone-150">
-            <div class="flex justify-between">
-              <span class="text-stone-500">👑 Jaktledare:</span>
-              <span class="font-bold text-stone-800" x-text="gastJakt.jaktledare"></span>
+      <main class="mx-auto w-full max-w-md flex-1 space-y-4 p-4">
+        <template x-if="guestLoadState === 'loading'">
+          <p role="status" class="py-12 text-center text-sm text-stone-600">Läser inbjudan...</p>
+        </template>
+        <template x-if="guestLoadState === 'missing' || guestLoadState === 'invalid' || guestLoadState === 'unavailable'">
+          <section class="border-y border-amber-200 bg-amber-50 px-4 py-8 text-center">
+            <h2 class="text-base font-bold text-amber-950">Inbjudan saknas eller har gått ut</h2>
+            <p class="mt-2 text-sm text-amber-900" x-text="guestLoadState === 'unavailable' ? 'Anslutningen till jaktlaget är inte tillgänglig.' : 'Be jaktledaren skicka en ny personlig inbjudningslänk.'"></p>
+          </section>
+        </template>
+        <template x-if="guestInvite">
+          <section class="space-y-4">
+            <div class="border-y border-sky-200 bg-sky-50 px-4 py-5">
+              <p class="text-[10px] font-bold uppercase text-sky-800">Personlig jaktinbjudan</p>
+              <h2 class="mt-1 text-lg font-bold text-slate-950" x-text="guestInvite.hunt.title"></h2>
+              <p class="mt-1 text-sm text-slate-700" x-text="formatHuntDate(guestInvite.hunt.huntDate)"></p>
+              <p class="mt-2 text-xs text-slate-700" x-text="'Hej ' + guestInvite.guestName"></p>
             </div>
-            <div class="flex justify-between">
-              <span class="text-stone-500">🍲 Lunch:</span>
-              <span class="font-medium text-stone-800" x-text="gastJakt.lunch.plan + ' (' + gastJakt.lunch.ansvarig + ')'"></span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-stone-500">🍷 Middag:</span>
-              <span class="font-medium text-stone-800" x-text="gastJakt.middag.planerad ? gastJakt.middag.detaljer : 'Ej planerad'"></span>
-            </div>
-          </div>
-
-          <div class="pt-2">
-            <h3 class="text-xs font-bold text-stone-700 mb-2">Din status:</h3>
-            <div class="grid grid-cols-2 gap-2">
-              <button @click="minStatus = 'Ja'" :class="minStatus === 'Ja' ? 'bg-emerald-800 text-white font-bold' : 'bg-stone-100 text-stone-700'" class="py-2.5 rounded-lg text-xs">
-                ✓ Jag kommer
-              </button>
-              <button @click="minStatus = 'Nej'" :class="minStatus === 'Nej' ? 'bg-rose-700 text-white font-bold' : 'bg-stone-100 text-stone-700'" class="py-2.5 rounded-lg text-xs">
-                ✕ Kan ej
-              </button>
-            </div>
-          </div>
-        </div>
+            <template x-if="guestInvite.hunt.meals.length">
+              <div class="border-b border-stone-200 pb-3">
+                <h3 class="text-xs font-bold uppercase text-stone-600">Gemensamma måltider</h3>
+                <div class="mt-2 space-y-2">
+                  <template x-for="meal in guestInvite.hunt.meals" :key="meal.type">
+                    <p class="text-sm text-stone-800" x-text="formatGuestMeal(meal)"></p>
+                  </template>
+                </div>
+              </div>
+            </template>
+            <section class="space-y-3 border-b border-stone-200 pb-4">
+              <div class="flex items-center justify-between gap-3">
+                <h3 class="text-sm font-bold text-stone-900">Ditt svar</h3>
+                <span class="text-xs text-stone-600" x-text="guestResponseLabel(guestInvite.response)"></span>
+              </div>
+              <div class="grid grid-cols-3 gap-2">
+                <button type="button" @click="saveGuestResponse('yes')" :disabled="guestSaving || !guestInvite.hunt.registrationOpen" :aria-pressed="guestInvite.response === 'yes'" :class="guestInvite.response === 'yes' ? 'bg-emerald-800 text-white' : 'bg-white text-stone-800 border border-stone-300'" class="min-h-11 rounded-lg px-2 text-sm font-semibold disabled:opacity-50">Ja</button>
+                <button type="button" @click="saveGuestResponse('unsure')" :disabled="guestSaving || !guestInvite.hunt.registrationOpen" :aria-pressed="guestInvite.response === 'unsure'" :class="guestInvite.response === 'unsure' ? 'bg-amber-600 text-white' : 'bg-white text-stone-800 border border-stone-300'" class="min-h-11 rounded-lg px-2 text-sm font-semibold disabled:opacity-50">Osäker</button>
+                <button type="button" @click="saveGuestResponse('no')" :disabled="guestSaving || !guestInvite.hunt.registrationOpen" :aria-pressed="guestInvite.response === 'no'" :class="guestInvite.response === 'no' ? 'bg-rose-700 text-white' : 'bg-white text-stone-800 border border-stone-300'" class="min-h-11 rounded-lg px-2 text-sm font-semibold disabled:opacity-50">Nej</button>
+              </div>
+              <label class="block text-xs font-semibold text-stone-700">Kommentar till jaktledningen
+                <textarea x-model="guestComment" maxlength="1000" rows="3" :disabled="!guestInvite.hunt.registrationOpen" placeholder="Valfri kommentar" class="mt-1 w-full rounded-lg border border-stone-300 p-2 text-sm disabled:bg-stone-100"></textarea>
+              </label>
+              <p role="status" class="text-xs text-stone-700" x-text="guestResponseMessage || (guestInvite.hunt.registrationOpen ? 'Välj Ja, Osäker eller Nej för att spara ditt svar.' : 'Svarstiden är stängd.')"></p>
+            </section>
+          </section>
+        </template>
       </main>
     </template>
+
+    <div x-show="showReportModal" x-cloak class="fixed inset-0 z-30 bg-stone-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <section @click.away="showReportModal = false" class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden border border-stone-200">
+        <header class="bg-emerald-800 text-white p-4 flex justify-between items-start">
+          <div><p class="text-[10px] uppercase tracking-wider text-emerald-200">Jaktrapport</p><h2 class="font-bold text-lg">Ny rapport</h2></div>
+          <button @click="showReportModal = false" aria-label="Stäng rapport" class="text-emerald-100 text-xl">×</button>
+        </header>
+        <div class="p-4 space-y-3 text-xs">
+          <div class="grid grid-cols-2 gap-2">
+            <label><span class="font-semibold text-stone-700">Datum</span><input x-model="reportDraft.datum" class="mt-1 w-full rounded-lg border p-2"></label>
+            <label><span class="font-semibold text-stone-700">Mark</span><input x-model="reportDraft.mark" class="mt-1 w-full rounded-lg border p-2"></label>
+          </div>
+          <label class="block"><span class="font-semibold text-stone-700">Rapportstatus</span><select x-model="reportDraft.status" class="mt-1 w-full rounded-lg border p-2"><option value="in_progress">Pågår</option><option value="complete">Klar</option></select></label>
+          <label class="flex items-center gap-2"><input type="checkbox" x-model="reportDraft.eftersok"><span class="font-semibold">Eftersök behövdes</span></label>
+          <template x-if="reportOptions.species.length && reportOptions.passes.length && reportOptions.participants.length">
+            <div class="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+              <p class="font-bold text-emerald-950">Registrera ett fällt djur</p>
+              <select x-model="reportDraft.speciesId" class="w-full rounded-lg border px-2 py-2"><option value="">Välj art</option><template x-for="item in reportOptions.species" :key="item.id"><option :value="item.id" x-text="item.name"></option></template></select>
+              <select x-model="reportDraft.passId" class="w-full rounded-lg border px-2 py-2"><option value="">Välj pass</option><template x-for="item in reportOptions.passes" :key="item.id"><option :value="item.id" x-text="item.name"></option></template></select>
+              <select x-model="reportDraft.shooterId" class="w-full rounded-lg border px-2 py-2"><option value="">Välj skytt</option><template x-for="item in reportOptions.participants" :key="item.id"><option :value="item.id" x-text="item.name"></option></template></select>
+              <button @click="sparaFalletDjur()" class="w-full rounded-lg bg-emerald-800 px-3 py-2 font-bold text-white">Spara fällt djur</button>
+              <p class="text-[10px] text-emerald-800" x-text="reportDraft.harvestMessage"></p>
+            </div>
+          </template>
+          <template x-if="reportDraft.harvestedAnimals && reportDraft.harvestedAnimals.length">
+            <div class="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p class="font-bold text-slate-900">Registrerat fällt vilt</p>
+              <template x-for="animal in reportDraft.harvestedAnimals" :key="animal.id">
+                <div class="space-y-2 rounded-lg border border-slate-200 bg-white p-2">
+                  <select x-model="animal.speciesId" class="w-full rounded border px-2 py-1 text-xs"><template x-for="item in reportOptions.species" :key="item.id"><option :value="item.id" x-text="item.name"></option></template></select>
+                  <div class="grid grid-cols-2 gap-2">
+                    <select x-model="animal.passId" class="rounded border px-2 py-1 text-xs"><template x-for="item in reportOptions.passes" :key="item.id"><option :value="item.id" x-text="item.name"></option></template></select>
+                    <select x-model="animal.shooterId" class="rounded border px-2 py-1 text-xs"><template x-for="item in reportOptions.participants" :key="item.id"><option :value="item.id" x-text="item.name"></option></template></select>
+                  </div>
+                  <div class="flex justify-end gap-2"><button @click="updateHarvestedAnimal(animal)" class="rounded bg-emerald-700 px-2 py-1 text-[10px] font-bold text-white">Spara ändring</button><button @click="removeHarvestedAnimal(animal)" class="rounded border border-rose-200 px-2 py-1 text-[10px] font-bold text-rose-700">Ta bort</button></div>
+                </div>
+              </template>
+            </div>
+          </template>
+          <label class="block"><span class="font-semibold text-stone-700">Observationer</span><textarea x-model="reportDraft.observationer" rows="3" placeholder="Observationer under jakten" class="mt-1 w-full rounded-lg border p-2"></textarea></label>
+          <p role="status" class="text-[10px] font-semibold text-emerald-700" x-text="reportDraft.saveMessage"></p>
+        </div>
+        <footer class="flex justify-end gap-2 border-t bg-stone-50 p-3">
+          <button @click="showReportModal = false" class="rounded-lg border px-3 py-2 text-xs">Avbryt</button>
+          <button @click="sparaRapport()" class="rounded-lg bg-emerald-800 px-4 py-2 text-xs font-bold text-white">Spara rapport</button>
+        </footer>
+      </section>
+    </div>
 
     <!-- MODAL: ETABLERA NY JAKT -->
     <div x-show="showModal" x-cloak class="fixed inset-0 z-30 bg-stone-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -251,11 +565,11 @@
   </div>
 
   <script>
-    const SUPABASE_URL = 'https://DIN-PROJEKT-REF.supabase.co';
-    const SUPABASE_ANON_KEY = 'DIN-SUPABASE-ANON-NYCKEL';
-    const JAKTLEDNINGEN_EMAILS = ['din.email@gmail.com'];
-
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const SUPABASE_URL = window.HUNT_CONFIG?.supabaseUrl || localStorage.getItem('hunt-dev-project-url') || '';
+    const SUPABASE_ANON_KEY = window.HUNT_CONFIG?.publishableKey || localStorage.getItem('hunt-dev-publishable-key') || '';
+    const supabaseClient = SUPABASE_URL && SUPABASE_ANON_KEY
+      ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
 
     function jaktApp() {
       return {
@@ -263,30 +577,315 @@
         userEmail: '',
         activeTab: 'schema',
         showModal: false,
-        minStatus: 'Tillfrågad',
+        showReportModal: false,
+        reportOptions: { species: [], passes: [], participants: [] },
+        reportDraft: {
+          huntId: '', datum: '', mark: 'Fän', status: 'in_progress', eftersok: false,
+          falltViltText: '', observationer: '', harvestedAnimals: [], saveMessage: '', harvestMessage: ''
+        },
+        guestToken: '',
+        guestUserEmail: '',
+        guestInvite: null,
+        guestLoadState: 'missing',
+        guestComment: '',
+        guestResponseMessage: '',
+        guestSaving: false,
+        selectedHunt: null,
+        rsvpSaveState: 'idle',
+        rsvpSaveMessage: '',
 
         nyJakt: { datum: '', mark: 'Fän', komplettering: '', jaktledare: 'Erik Andersson' },
 
         async init() {
+          this.guestToken = new URLSearchParams(window.location.hash.slice(1)).get('invite') || '';
+          if (!supabaseClient) {
+            if (this.guestToken) this.guestLoadState = 'unavailable';
+            return;
+          }
           const { data: { session } } = await supabaseClient.auth.getSession();
-          this.checkUser(session);
+          if (this.guestToken) {
+            this.isLoggedIn = false;
+            this.guestUserEmail = session?.user?.email || '';
+            await this.loadGuestInvite();
+            supabaseClient.auth.onAuthStateChange((_event, currentSession) => {
+              this.guestUserEmail = currentSession?.user?.email || '';
+            });
+            return;
+          }
+          await this.checkUser(session);
           supabaseClient.auth.onAuthStateChange((_event, session) => this.checkUser(session));
         },
 
-        checkUser(session) {
-          if (session && session.user && JAKTLEDNINGEN_EMAILS.includes(session.user.email)) {
+        async leaveGuestInvite() {
+          const url = new URL(window.location.href);
+          url.hash = '';
+          window.history.replaceState(null, '', url.toString());
+          this.guestToken = '';
+          this.guestUserEmail = '';
+          this.guestInvite = null;
+          this.guestLoadState = 'missing';
+          const { data: { session } } = await supabaseClient.auth.getSession();
+          await this.checkUser(session);
+        },
+
+        async hashGuestToken(token) {
+          if (!/^[a-f0-9]{64}$/.test(token)) throw new Error('Invalid invite token');
+          const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+          return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+        },
+
+        async loadGuestInvite() {
+          this.guestLoadState = 'loading';
+          try {
+            const tokenHash = await this.hashGuestToken(this.guestToken);
+            const { data, error } = await supabaseClient.rpc('get_guest_invite', { target_token_hash: tokenHash });
+            if (error || !data) {
+              this.guestLoadState = 'invalid';
+              return;
+            }
+            this.guestInvite = data;
+            this.guestComment = data.responseComment || '';
+            this.guestLoadState = 'ready';
+          } catch {
+            this.guestLoadState = 'invalid';
+          }
+        },
+
+        formatHuntDate(value) {
+          if (!value) return '';
+          return new Intl.DateTimeFormat('sv-SE', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+          }).format(new Date(`${value}T12:00:00`));
+        },
+
+        formatGuestMeal(meal) {
+          return [meal.type === 'lunch' ? 'Lunch' : 'Middag', meal.plan, meal.startsAt?.slice(0, 5), meal.location]
+            .filter(Boolean).join(' · ');
+        },
+
+        guestResponseLabel(response) {
+          return ({ yes: 'Ja, jag kommer', no: 'Nej, jag kan inte', unsure: 'Osäker', unanswered: 'Inget svar ännu' })[response] || '';
+        },
+
+        async saveGuestResponse(response) {
+          if (!supabaseClient || !this.guestInvite || !this.guestToken || this.guestSaving) return;
+          this.guestSaving = true;
+          this.guestResponseMessage = '';
+          try {
+            const tokenHash = await this.hashGuestToken(this.guestToken);
+            const { data, error } = await supabaseClient.rpc('respond_guest_invite', {
+              target_token_hash: tokenHash,
+              target_response: response,
+              target_comment: this.guestComment
+            });
+            if (error) {
+              this.guestResponseMessage = 'Kunde inte spara svaret. Inbjudan kan vara återkallad eller stängd.';
+              return;
+            }
+            this.guestInvite = { ...this.guestInvite, response: data.response, responseComment: data.responseComment };
+            this.guestResponseMessage = 'Ditt svar är sparat.';
+          } catch {
+            this.guestResponseMessage = 'Kunde inte spara svaret.';
+          } finally {
+            this.guestSaving = false;
+          }
+        },
+
+        async createGuestInvite(hunt) {
+          const guestName = hunt.newGuestName.trim();
+          if (!guestName || !hunt.id) return;
+          hunt.guestInviteMessage = 'Skapar inbjudan...';
+          try {
+            const tokenBytes = crypto.getRandomValues(new Uint8Array(32));
+            const token = Array.from(tokenBytes, byte => byte.toString(16).padStart(2, '0')).join('');
+            const targetTokenHash = await this.hashGuestToken(token);
+            const { data: participantId, error } = await supabaseClient.rpc('create_guest_invite', {
+              target_hunt_id: hunt.id,
+              target_guest_name: guestName,
+              target_token_hash: targetTokenHash
+            });
+            if (error) throw error;
+            const inviteUrl = new URL(window.location.href);
+            inviteUrl.search = '';
+            inviteUrl.hash = `invite=${token}`;
+            hunt.guestInviteUrl = inviteUrl.toString();
+            hunt.driveParticipants.push({
+              id: participantId, name: guestName, response: 'unanswered', passName: '', passId: '',
+              assignmentStatus: 'pending', isGuest: true
+            });
+            hunt.newGuestName = '';
+            hunt.guestInviteMessage = 'Länken är personlig. Kopiera och skicka den till gästen.';
+          } catch {
+            hunt.guestInviteMessage = 'Kunde inte skapa inbjudan.';
+          }
+        },
+
+        async copyGuestInvite(hunt) {
+          try {
+            await navigator.clipboard.writeText(hunt.guestInviteUrl);
+            hunt.guestInviteMessage = 'Inbjudningslänken är kopierad.';
+          } catch {
+            hunt.guestInviteMessage = 'Kopiering misslyckades. Markera och kopiera länken manuellt.';
+          }
+        },
+
+        async revokeGuestInvite(assignment) {
+          if (!this.selectedHunt || !confirm(`Återkalla inbjudan till ${assignment.name}?`)) return;
+          const { error } = await supabaseClient.rpc('revoke_guest_invite', {
+            target_participant_id: assignment.id
+          });
+          if (error) {
+            this.selectedHunt.guestInviteMessage = 'Kunde inte återkalla inbjudan.';
+            return;
+          }
+          this.selectedHunt.driveParticipants = this.selectedHunt.driveParticipants
+            .filter(item => item.id !== assignment.id);
+          this.selectedHunt.guestInviteMessage = 'Inbjudan återkallad.';
+        },
+
+        async checkUser(session) {
+          if (session && session.user) {
             this.isLoggedIn = true;
             this.userEmail = session.user.email;
+            await this.loadHunts();
           } else {
             this.isLoggedIn = false;
             this.userEmail = '';
           }
         },
 
+        async loadHunts() {
+          const { data, error } = await supabaseClient
+            .from('hunts')
+            .select('id, title, hunt_date, status, team_id')
+            .order('hunt_date', { ascending: true });
+          if (error || !data || data.length === 0) return;
+          this.jakter = data.map(hunt => ({
+            id: hunt.id,
+            teamId: hunt.team_id,
+            datum: new Intl.DateTimeFormat('sv-SE', {
+              weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+            }).format(new Date(`${hunt.hunt_date}T12:00:00`)),
+            mark: 'Fän',
+            komplettering: '',
+            jaktledare: 'Ej tilldelad',
+            status: hunt.status,
+            lunch: { ansvarig: 'Ej angiven', plan: 'Ej angiven' },
+            middag: { planerad: false, detaljer: '' },
+            deltagare: []
+          }));
+          await Promise.all(this.jakter.map(hunt => this.loadDriveData(hunt)));
+        },
+
+        async loadDriveData(hunt, requestedDriveName = 'Drev 1') {
+          const { data: drives } = await supabaseClient
+            .from('drives').select('id, name').eq('hunt_id', hunt.id).order('sort_order');
+          hunt.driveOptions = drives || [];
+          const drive = (drives || []).find(item => item.name === requestedDriveName) || drives?.[0];
+          if (!drive) return;
+          hunt.selectedDriveName = drive.name;
+          const { data: driveMarks } = await supabaseClient
+            .from('drive_marks').select('mark_id').eq('drive_id', drive.id);
+          const enabledMarkIds = (driveMarks || []).map(item => item.mark_id);
+          const { data: marks } = enabledMarkIds.length
+            ? await supabaseClient.from('marks').select('id, name').in('id', enabledMarkIds)
+            : { data: [] };
+          const markNameById = Object.fromEntries((marks || []).map(mark => [mark.id, mark.name]));
+          hunt.driveMarks = enabledMarkIds.map(markId => markNameById[markId]).filter(Boolean);
+          hunt.isBoatDrive = hunt.driveMarks.includes('Jakt från båt');
+          const { data: passes } = enabledMarkIds.length
+            ? await supabaseClient.from('passes').select('id, name, mark_id').eq('team_id', hunt.teamId).eq('is_active', true).in('mark_id', enabledMarkIds).order('name')
+            : { data: [] };
+          hunt.driveId = drive.id;
+          hunt.passOptions = passes || [];
+          hunt.newGuestName ??= '';
+          hunt.guestInviteUrl ??= '';
+          hunt.guestInviteMessage ??= '';
+          hunt.driveParticipants = [];
+          hunt.myPassId = '';
+          hunt.passSaveMessage = 'Ingen tilldelning ännu.';
+
+          const { data: participants } = await supabaseClient
+            .from('hunt_participants')
+            .select('id, person_id, guest_name, response')
+            .eq('hunt_id', hunt.id)
+            .is('revoked_at', null);
+          const personIds = (participants || []).map(participant => participant.person_id).filter(Boolean);
+          const { data: people } = personIds.length
+            ? await supabaseClient.from('people').select('id, name').in('id', personIds)
+            : { data: [] };
+          const nameById = Object.fromEntries((people || []).map(person => [person.id, person.name]));
+          const { data: assignments } = await supabaseClient
+            .from('drive_participants').select('id, participant_id, pass_id, assignment_status').eq('drive_id', drive.id);
+          const assignmentByParticipant = Object.fromEntries((assignments || []).map(assignment => [assignment.participant_id, assignment]));
+          const passNameById = Object.fromEntries((passes || []).map(pass => [pass.id, pass.name]));
+          hunt.driveParticipants = (participants || []).map(participant => {
+            const assignment = assignmentByParticipant[participant.id];
+            return {
+              id: participant.id,
+              name: participant.person_id ? nameById[participant.person_id] : participant.guest_name,
+              response: participant.response,
+              passName: assignment ? passNameById[assignment.pass_id] : '',
+              passId: assignment?.pass_id || '',
+              assignmentStatus: assignment?.assignment_status || 'pending',
+              isGuest: Boolean(participant.guest_name)
+            };
+          });
+          const { data: huntDogs } = await supabaseClient
+            .from('hunt_dogs').select('id, dog_id, guest_dog_name, guest_dog_breed').eq('hunt_id', hunt.id);
+          const dogIds = (huntDogs || []).map(dog => dog.dog_id).filter(Boolean);
+          const { data: dogs } = dogIds.length
+            ? await supabaseClient.from('dogs').select('id, name, breed').in('id', dogIds)
+            : { data: [] };
+          const dogById = Object.fromEntries((dogs || []).map(dog => [dog.id, dog]));
+          const { data: dogAssignments } = await supabaseClient
+            .from('drive_dog_assignments').select('hunt_dog_id, handler_participant_id').eq('drive_id', drive.id);
+          const handlerByDog = Object.fromEntries((dogAssignments || []).map(item => [item.hunt_dog_id, item.handler_participant_id]));
+          const assignedHuntDogIds = new Set((dogAssignments || []).map(item => item.hunt_dog_id));
+          hunt.driveDogs = (huntDogs || []).map(huntDog => {
+            const dog = huntDog.dog_id ? dogById[huntDog.dog_id] : null;
+            return {
+              id: huntDog.id,
+              name: dog?.name || huntDog.guest_dog_name || 'Namnlös hund',
+              breed: dog?.breed || huntDog.guest_dog_breed || '',
+              handler: nameById[handlerByDog[huntDog.id]] || '',
+              dogId: huntDog.dog_id || '',
+              handlerId: handlerByDog[huntDog.id] || ''
+            };
+          }).filter(dog => assignedHuntDogIds.has(dog.id));
+          hunt.newDogName = '';
+          hunt.newDogBreed = '';
+          hunt.newDogHandlerId = '';
+          const { data: dogOptions } = await supabaseClient
+            .from('dogs').select('id, name, breed').eq('team_id', hunt.teamId).eq('is_active', true).order('name');
+          hunt.dogOptions = dogOptions || [];
+          hunt.selectedDogId = '';
+          hunt.dogSaveMessage = '';
+
+          const { data: userData } = await supabaseClient.auth.getUser();
+          const { data: person } = await supabaseClient
+            .from('people').select('id').eq('team_id', hunt.teamId).eq('auth_user_id', userData.user?.id).maybeSingle();
+          if (!person) return;
+          const { data: participant } = await supabaseClient
+            .from('hunt_participants').select('id').eq('hunt_id', hunt.id).eq('person_id', person.id).maybeSingle();
+          if (!participant) return;
+          const { data: assignment } = await supabaseClient
+            .from('drive_participants').select('pass_id').eq('drive_id', drive.id).eq('participant_id', participant.id).maybeSingle();
+          if (assignment?.pass_id) {
+            hunt.myPassId = assignment.pass_id;
+            hunt.passSaveMessage = 'Ditt pass är sparat.';
+          }
+        },
+
+        async switchDrive(hunt) {
+          await this.loadDriveData(hunt, hunt.selectedDriveName);
+        },
+
         async loginWithGoogle() {
+          if (!supabaseClient) return alert('Konfigurera Supabase via karteditorns kugghjul först.');
           await supabaseClient.auth.signInWithOAuth({
             provider: 'google',
-            options: { redirectTo: 'https://pettertiger.github.io/hunt/' }
+            options: { redirectTo: window.location.href.split('#')[0] }
           });
         },
 
@@ -297,6 +896,208 @@
         },
 
         openNewHuntModal() { this.showModal = true; },
+
+        async openReportModal() {
+          const hunt = this.jakter.find(item => typeof item.id === 'string');
+          this.reportDraft = { huntId: hunt?.id || '', datum: new Date().toLocaleDateString('sv-SE'), mark: 'Fän', status: 'in_progress', eftersok: false, falltViltText: '', observationer: '', saveMessage: '' };
+          if (this.reportDraft.huntId && supabaseClient) {
+            const { data: species } = await supabaseClient.from('species').select('id, name').eq('team_id', hunt.teamId).eq('is_active', true).order('name');
+            const { data: passes } = await supabaseClient.from('passes').select('id, name, mark_id').eq('team_id', hunt.teamId).eq('is_active', true).order('name');
+            const { data: participants } = await supabaseClient.from('hunt_participants').select('id, person_id, guest_name').eq('hunt_id', hunt.id).is('revoked_at', null);
+            const personIds = (participants || []).map(item => item.person_id).filter(Boolean);
+            const { data: people } = personIds.length ? await supabaseClient.from('people').select('id, name').in('id', personIds) : { data: [] };
+            const names = Object.fromEntries((people || []).map(item => [item.id, item.name]));
+            this.reportOptions = { species: species || [], passes: passes || [], participants: (participants || []).map(item => ({ id: item.id, name: item.person_id ? names[item.person_id] : item.guest_name })) };
+            const { data: harvested } = await supabaseClient.from('harvested_animals').select('id, species_id, pass_id, pass_mark_id, shooter_participant_id').eq('hunt_id', hunt.id).order('created_at');
+            this.reportDraft.harvestedAnimals = (harvested || []).map(animal => ({ id: animal.id, speciesId: animal.species_id, passId: animal.pass_id, passMarkId: animal.pass_mark_id, shooterId: animal.shooter_participant_id }));
+          }
+          this.showReportModal = true;
+        },
+
+        async sparaFalletDjur() {
+          if (!supabaseClient || !this.reportDraft.huntId || !this.reportDraft.speciesId || !this.reportDraft.passId || !this.reportDraft.shooterId) return;
+          const pass = this.reportOptions.passes.find(item => item.id === this.reportDraft.passId);
+          const { error } = await supabaseClient.rpc('add_harvested_animal', {
+            target_hunt_id: this.reportDraft.huntId,
+            target_species_id: this.reportDraft.speciesId,
+            target_pass_id: this.reportDraft.passId,
+            target_pass_mark_id: pass.mark_id,
+            target_shooter_participant_id: this.reportDraft.shooterId
+          });
+          this.reportDraft.harvestMessage = error ? `Kunde inte spara: ${error.message}` : 'Fällt djur sparat.';
+          if (!error) await this.openReportModal();
+        },
+
+        async updateHarvestedAnimal(animal) {
+          const pass = this.reportOptions.passes.find(item => item.id === animal.passId);
+          const { error } = await supabaseClient.rpc('update_harvested_animal', { target_id: animal.id, target_species_id: animal.speciesId, target_pass_id: animal.passId, target_pass_mark_id: pass.mark_id, target_shooter_participant_id: animal.shooterId });
+          if (error) alert(`Kunde inte spara ändringen: ${error.message}`);
+        },
+
+        async removeHarvestedAnimal(animal) {
+          if (!confirm('Ta bort registreringen av fällt vilt?')) return;
+          const { error } = await supabaseClient.rpc('remove_harvested_animal', { target_id: animal.id });
+          if (error) { alert(`Kunde inte ta bort registreringen: ${error.message}`); return; }
+          this.reportDraft.harvestedAnimals = this.reportDraft.harvestedAnimals.filter(item => item.id !== animal.id);
+        },
+
+        async sparaRapport() {
+          this.rapporter.unshift({
+            id: Date.now(), datum: this.reportDraft.datum, mark: this.reportDraft.mark,
+            eftersok: this.reportDraft.eftersok,
+            falltVilt: [],
+            observationer: this.reportDraft.observationer || 'Inga observationer angivna.'
+          });
+          if (supabaseClient && this.reportDraft.huntId) {
+            const notes = [this.reportDraft.observationer, this.reportDraft.eftersok ? 'Eftersök behövdes.' : ''].filter(Boolean).join('\n');
+            const { error } = await supabaseClient.rpc('save_hunt_report', {
+              target_hunt_id: this.reportDraft.huntId,
+              target_status: this.reportDraft.status,
+              target_notes: notes
+            });
+            if (error) {
+              this.reportDraft.saveMessage = `Kunde inte spara till Supabase: ${error.message}`;
+              return;
+            }
+          }
+          this.showReportModal = false;
+        },
+
+        selectHunt(hunt) {
+          this.selectedHunt = hunt;
+          this.rsvpSaveState = 'idle';
+          this.rsvpSaveMessage = hunt.myRsvp && hunt.myRsvp !== 'unanswered'
+            ? 'Ditt svar är sparat.'
+            : 'Inget svar sparat ännu.';
+          if (!this.selectedHunt.myRsvp) this.selectedHunt.myRsvp = 'unanswered';
+          if (!this.selectedHunt.myComment) this.selectedHunt.myComment = '';
+        },
+
+        async setRsvp(response) {
+          if (!this.selectedHunt) return;
+          this.selectedHunt.myRsvp = response;
+          await this.saveRsvp();
+        },
+
+        async saveRsvp() {
+          if (!supabaseClient || !this.selectedHunt || typeof this.selectedHunt.id !== 'string') return;
+          this.rsvpSaveState = 'saving';
+          this.rsvpSaveMessage = 'Sparar ditt svar...';
+          const { error } = await supabaseClient.rpc('set_my_hunt_response', {
+            target_hunt_id: this.selectedHunt.id,
+            target_response: this.selectedHunt.myRsvp,
+            target_comment: this.selectedHunt.myComment
+          });
+          if (error) {
+            this.rsvpSaveState = 'error';
+            this.rsvpSaveMessage = `Kunde inte spara: ${error.message}`;
+            return;
+          }
+          this.rsvpSaveState = 'saved';
+          this.rsvpSaveMessage = `Sparat kl. ${new Intl.DateTimeFormat('sv-SE', {
+            hour: '2-digit', minute: '2-digit'
+          }).format(new Date())}`;
+        },
+
+        async savePassAssignment() {
+          if (!supabaseClient || !this.selectedHunt?.driveId || !this.selectedHunt.myPassId) return;
+          this.selectedHunt.passSaveMessage = 'Sparar pass...';
+          const { error } = await supabaseClient.rpc('set_my_drive_assignment', {
+            target_drive_id: this.selectedHunt.driveId,
+            target_pass_id: this.selectedHunt.myPassId
+          });
+          this.selectedHunt.passSaveMessage = error
+            ? `Kunde inte spara: ${error.message}`
+            : 'Ditt pass är sparat.';
+        },
+
+        async saveLeaderAssignment(assignment) {
+          if (!supabaseClient || !this.selectedHunt?.driveId || !assignment.passId) return;
+          const conflict = this.selectedHunt.driveParticipants.find(item =>
+            item.id !== assignment.id && item.passId === assignment.passId
+          );
+          if (conflict) {
+            assignment.passId = '';
+            assignment.passName = '';
+            alert(`Passet används redan av ${conflict.name} i ${this.selectedHunt.selectedDriveName}.`);
+            return;
+          }
+          const { error } = await supabaseClient.rpc('set_drive_participant_assignment', {
+            target_drive_id: this.selectedHunt.driveId,
+            target_participant_id: assignment.id,
+            target_pass_id: assignment.passId
+          });
+          if (error) {
+            assignment.passId = '';
+            assignment.passName = '';
+            alert(`Kunde inte spara passtilldelningen: ${error.message}`);
+            return;
+          }
+          assignment.passName = this.selectedHunt.passOptions.find(pass => pass.id === assignment.passId)?.name || '';
+        },
+
+        async saveDog() {
+          if (!supabaseClient || !this.selectedHunt?.driveId || !this.selectedHunt.newDogName.trim()) return;
+          this.selectedHunt.dogSaveMessage = 'Sparar hund...';
+          const { error } = await supabaseClient.rpc('add_drive_dog', {
+            target_drive_id: this.selectedHunt.driveId,
+            target_name: this.selectedHunt.newDogName,
+            target_breed: this.selectedHunt.newDogBreed,
+            target_handler_participant_id: this.selectedHunt.newDogHandlerId || null
+          });
+          if (error) {
+            this.selectedHunt.dogSaveMessage = `Kunde inte spara: ${error.message}`;
+            return;
+          }
+          this.selectedHunt.dogSaveMessage = 'Hund och hundförare sparade.';
+          await this.loadDriveData(this.selectedHunt, this.selectedHunt.selectedDriveName);
+        },
+
+        async saveExistingDog() {
+          if (!supabaseClient || !this.selectedHunt?.driveId || !this.selectedHunt.selectedDogId) return;
+          if (!this.selectedHunt.newDogHandlerId) {
+            this.selectedHunt.dogSaveMessage = 'Välj hundförare innan hunden sparas.';
+            return;
+          }
+          this.selectedHunt.dogSaveMessage = 'Sparar hund...';
+          const { error } = await supabaseClient.rpc('add_existing_drive_dog', {
+            target_drive_id: this.selectedHunt.driveId,
+            target_dog_id: this.selectedHunt.selectedDogId,
+            target_handler_participant_id: this.selectedHunt.newDogHandlerId || null
+          });
+          if (error) {
+            this.selectedHunt.dogSaveMessage = `Kunde inte spara: ${error.message}`;
+            return;
+          }
+          this.selectedHunt.dogSaveMessage = 'Sparad hund tillagd i drevet.';
+          await this.loadDriveData(this.selectedHunt, this.selectedHunt.selectedDriveName);
+        },
+
+        async updateDogAssignment(dog) {
+          if (!supabaseClient || !this.selectedHunt?.driveId || !dog.dogId || !dog.handlerId) return;
+          const { error } = await supabaseClient.rpc('update_drive_dog_assignment', {
+            target_drive_id: this.selectedHunt.driveId,
+            target_hunt_dog_id: dog.id,
+            target_dog_id: dog.dogId,
+            target_handler_participant_id: dog.handlerId
+          });
+          if (error) alert(`Kunde inte uppdatera hundtilldelningen: ${error.message}`);
+          else await this.loadDriveData(this.selectedHunt, this.selectedHunt.selectedDriveName);
+        },
+
+        async removeDogAssignment(dog) {
+          if (!supabaseClient || !this.selectedHunt?.driveId) return;
+          if (!confirm(`Ta bort ${dog.name} från ${this.selectedHunt.selectedDriveName}?`)) return;
+          const { error } = await supabaseClient.rpc('remove_drive_dog_assignment', {
+            target_drive_id: this.selectedHunt.driveId,
+            target_hunt_dog_id: dog.id
+          });
+          if (error) {
+            alert(`Kunde inte ta bort hunden: ${error.message}`);
+            return;
+          }
+          await this.loadDriveData(this.selectedHunt, this.selectedHunt.selectedDriveName);
+        },
 
         sparaNyJakt() {
           if (!this.nyJakt.datum) return alert('Ange datum.');
@@ -313,15 +1114,6 @@
           });
           this.showModal = false;
           this.nyJakt.datum = '';
-        },
-
-        gastJakt: {
-          datum: 'Lördag 17 Oktober 2026',
-          mark: 'Fän',
-          komplettering: 'Skogsö',
-          jaktledare: 'Erik Andersson',
-          lunch: { ansvarig: 'Johan', plan: 'Gulaschsoppa vid grillplatsen' },
-          middag: { planerad: true, detaljer: 'Viltgryta i stugan kl 19:00' }
         },
 
         jakter: [

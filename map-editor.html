@@ -1,0 +1,1393 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17211f">
+  <title>Fän | Passkarta</title>
+  <script src="config.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17211f;
+      --muted: #74817d;
+      --paper: #f3f4ef;
+      --panel: #fbfcf8;
+      --line: #dce2da;
+      --forest: #22574a;
+      --forest-dark: #183e35;
+      --lime: #d9ed75;
+      --coral: #e27052;
+      --gold: #e9bd61;
+      --mono: "DM Mono", ui-monospace, SFMono-Regular, monospace;
+      --sans: "Manrope", "Aptos", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: var(--sans);
+    }
+
+    button, input { font: inherit; }
+    button { color: inherit; }
+    [hidden] { display: none !important; }
+
+    .app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      min-height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 12px 22px;
+      color: #f4f7ef;
+      background: var(--ink);
+      border-bottom: 3px solid var(--lime);
+    }
+
+    .brand { display: flex; align-items: center; gap: 13px; min-width: 0; }
+    .brand-mark {
+      width: 35px;
+      height: 35px;
+      display: grid;
+      place-items: center;
+      color: var(--ink);
+      background: var(--lime);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .brand-title { margin: 0; font-size: 14px; font-weight: 800; }
+    .brand-subtitle {
+      margin: 2px 0 0;
+      color: #aebdb5;
+      font: 10px var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .top-actions { display: flex; align-items: center; gap: 9px; }
+    .local-badge {
+      padding: 6px 9px;
+      color: #e8ca80;
+      border: 1px solid #6e633c;
+      font: 10px var(--mono);
+      text-transform: uppercase;
+    }
+
+    .button {
+      min-height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--panel);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      transition: background .15s ease, border-color .15s ease, transform .15s ease;
+    }
+    .button:hover { border-color: #87968d; background: #fff; }
+    .button:active { transform: translateY(1px); }
+    .button:focus-visible, input:focus-visible, .pass-row:focus-visible {
+      outline: 3px solid #77a99a;
+      outline-offset: 2px;
+    }
+    .button-primary { border-color: var(--lime); background: var(--lime); }
+    .button-primary:hover { border-color: #e7f59d; background: #e7f59d; }
+    .button-dark { color: #fff; border-color: #476158; background: #253932; }
+    .button-dark:hover { background: #304940; }
+    .button-small { min-height: 30px; padding: 5px 8px; font-size: 11px; }
+    .button-icon { width: 34px; min-width: 34px; padding: 5px; font: 16px var(--mono); }
+    .auth-state { max-width: 150px; overflow: hidden; color: #aebdb5; font: 9px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+
+    .dialog-backdrop {
+      width: min(460px, calc(100% - 28px));
+      max-width: none;
+      padding: 0;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      background: var(--panel);
+      box-shadow: 0 24px 80px #10181755;
+    }
+    .dialog-backdrop::backdrop { background: #10181799; backdrop-filter: blur(3px); }
+    .dialog-header { padding: 18px 20px 13px; border-bottom: 1px solid var(--line); }
+    .dialog-header h2 { margin: 0; font-size: 16px; }
+    .dialog-body { padding: 17px 20px; }
+    .dialog-copy { margin: 0 0 15px; color: #64716c; font-size: 11px; line-height: 1.65; }
+    .field-label { display: block; margin: 12px 0 6px; font-size: 11px; font-weight: 800; }
+    .field-input { width: 100%; min-height: 38px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 3px; background: #fff; color: var(--ink); font: 11px var(--mono); }
+    .dialog-note { margin: 12px 0 0; padding: 10px; border-left: 3px solid var(--gold); background: #f6f0df; color: #655633; font-size: 10px; line-height: 1.6; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--line); }
+
+    .workspace {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 278px minmax(0, 1fr) 250px;
+    }
+
+    .sidebar, .inspector {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--panel);
+    }
+    .sidebar { border-right: 1px solid var(--line); }
+    .inspector { border-left: 1px solid var(--line); }
+    .panel-heading {
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .panel-heading h2 { margin: 0; font-size: 12px; font-weight: 800; }
+    .eyebrow {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--muted);
+      font: 9px var(--mono);
+      text-transform: uppercase;
+    }
+    .counter { color: var(--muted); font: 10px var(--mono); }
+
+    .sidebar-content { min-height: 0; display: flex; flex: 1; flex-direction: column; }
+    .upload-area { padding: 14px; border-bottom: 1px solid var(--line); }
+    .file-input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+    .upload-label {
+      min-height: 74px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px;
+      border: 1px dashed #97a69c;
+      background: #f4f6f0;
+      cursor: pointer;
+    }
+    .upload-label:hover { border-color: var(--forest); background: #edf2e9; }
+    .upload-title { display: block; font-size: 12px; font-weight: 800; }
+    .upload-hint { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+    .upload-glyph { color: var(--forest); font: 20px var(--mono); }
+    .file-meta { margin: 9px 0 0; color: var(--muted); font: 10px var(--mono); overflow-wrap: anywhere; }
+    .search-wrap { padding: 12px 14px 8px; }
+    .search {
+      width: 100%;
+      min-height: 36px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 12px;
+    }
+    .pass-list { min-height: 0; overflow: auto; padding: 4px 8px 12px; }
+    .pass-row {
+      width: 100%;
+      min-height: 36px;
+      display: grid;
+      grid-template-columns: 37px 1fr auto;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 8px;
+      border: 1px solid transparent;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+    }
+    .pass-row:hover { background: #f0f3ed; }
+    .pass-row.is-selected { border-color: #b4c2ae; background: #eaf0e5; }
+    .pass-number { color: var(--muted); font: 10px var(--mono); }
+    .pass-name { font: 12px var(--mono); font-weight: 500; }
+    .pass-state { width: 7px; height: 7px; border-radius: 50%; background: #c4cdc6; }
+    .pass-state.is-placed { background: var(--forest); box-shadow: 0 0 0 3px #deebe3; }
+    .list-footer { padding: 10px 15px; color: var(--muted); border-top: 1px solid var(--line); font: 10px var(--mono); }
+
+    .map-column { min-width: 0; min-height: 0; display: flex; flex-direction: column; background: #dfe4dc; }
+    .map-toolbar {
+      min-height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 9px;
+      padding: 8px 13px;
+      background: #fbfcf8;
+      border-bottom: 1px solid var(--line);
+    }
+    .tool-group { display: flex; align-items: center; gap: 5px; }
+    .segmented { display: inline-flex; padding: 3px; border: 1px solid var(--line); background: #eef1eb; }
+    .segmented .button { min-height: 29px; border: 0; background: transparent; }
+    .segmented .button.is-active { color: #fff; background: var(--forest); }
+    .zoom-label { min-width: 45px; color: var(--muted); text-align: center; font: 10px var(--mono); }
+    .map-viewport {
+      position: relative;
+      flex: 1;
+      min-height: 420px;
+      overflow: hidden;
+      background-color: #dfe4dc;
+      background-image: radial-gradient(#b9c3ba 0.8px, transparent 0.8px);
+      background-size: 18px 18px;
+      touch-action: none;
+      user-select: none;
+    }
+    .map-viewport.is-pan { cursor: grab; }
+    .map-viewport.is-pan.is-dragging { cursor: grabbing; }
+    .map-viewport.is-place { cursor: crosshair; }
+    .map-surface {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform-origin: center center;
+      background: white;
+      box-shadow: 0 18px 45px #17211f30, 0 2px 6px #17211f20;
+    }
+    #pdfCanvas { display: block; width: 100%; height: 100%; }
+    .marker-layer { position: absolute; inset: 0; }
+    .map-pin {
+      position: absolute;
+      z-index: 2;
+      min-width: 23px;
+      height: 18px;
+      display: grid;
+      place-items: center;
+      padding: 0 3px;
+      color: #fff;
+      border: 1px solid #fff;
+      border-radius: 3px;
+      background: var(--forest);
+      box-shadow: 0 1px 4px #17211f70;
+      transform: translate(-50%, -50%);
+      cursor: grab;
+      font: 8px/1 var(--mono);
+      touch-action: none;
+    }
+    .map-pin::before { content: ""; position: absolute; inset: -6px; }
+    .map-pin:hover { z-index: 4; background: var(--forest-dark); }
+    .map-pin.is-selected { z-index: 5; color: var(--ink); border-color: #fff; background: var(--lime); box-shadow: 0 0 0 2px #17211f, 0 2px 8px #17211f70; }
+    .map-pin:active { cursor: grabbing; }
+    .empty-map {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .empty-content { max-width: 340px; text-align: center; }
+    .empty-number { color: var(--forest); font: 48px var(--mono); }
+    .empty-title { margin: 10px 0 7px; font-size: 17px; font-weight: 800; }
+    .empty-copy { margin: 0; color: #65716c; font-size: 12px; line-height: 1.65; }
+    .map-footer {
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 7px 13px;
+      color: #cbd6ce;
+      background: var(--ink);
+      font: 9px var(--mono);
+    }
+    .map-status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mode-note { color: #e8ca80; }
+
+    .inspector-content { padding: 16px; }
+    .inspector-title { margin: 0; font-size: 16px; font-weight: 800; }
+    .inspector-description { margin: 7px 0 18px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .detail-label { display: block; margin: 0 0 6px; color: var(--muted); font: 9px var(--mono); text-transform: uppercase; }
+    .detail-value { margin: 0 0 16px; font: 12px var(--mono); }
+    .inspector-actions { display: grid; gap: 8px; }
+    .notice {
+      margin: 16px;
+      padding: 11px;
+      border-left: 3px solid var(--gold);
+      background: #f6f0df;
+      color: #655633;
+      font-size: 10px;
+      line-height: 1.6;
+    }
+    .notice strong { display: block; margin-bottom: 3px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+    @media (max-width: 1020px) {
+      .workspace { grid-template-columns: 248px minmax(0, 1fr); }
+      .inspector { display: none; }
+    }
+
+    @media (max-width: 680px) {
+      .topbar { min-height: 60px; padding: 10px 12px; }
+      .brand-mark { width: 31px; height: 31px; }
+      .brand-title { font-size: 12px; }
+      .brand-subtitle { font-size: 8px; }
+      .local-badge { display: none; }
+      .auth-state { max-width: 78px; font-size: 8px; }
+      .button { min-height: 34px; padding: 7px 9px; font-size: 11px; }
+      .workspace { display: flex; flex-direction: column; }
+      .sidebar { max-height: 34vh; border-right: 0; border-bottom: 1px solid var(--line); }
+      .panel-heading { min-height: 45px; padding: 9px 12px; }
+      .upload-area { padding: 9px 12px; }
+      .upload-label { min-height: 53px; }
+      .upload-hint { display: none; }
+      .search-wrap { padding: 8px 12px 3px; }
+      .search { min-height: 33px; }
+      .pass-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; padding: 3px 8px 8px; }
+      .pass-row { min-height: 31px; grid-template-columns: 1fr auto; gap: 4px; padding: 4px 6px; }
+      .pass-number { display: none; }
+      .pass-name { font-size: 10px; }
+      .pass-state { width: 6px; height: 6px; }
+      .list-footer { padding: 6px 12px; }
+      .map-toolbar { min-height: 47px; padding: 6px 8px; }
+      .segmented .button { min-height: 28px; padding: 5px 7px; font-size: 10px; }
+      .map-viewport { min-height: 49vh; flex: 1; }
+      .map-pin { min-width: 21px; height: 16px; padding: 0 2px; font-size: 7px; }
+      .map-pin::before { inset: -7px; }
+      .map-footer { min-height: 31px; padding: 6px 9px; font-size: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">F/</div>
+        <div>
+          <p class="brand-title">Fän Jaktlag</p>
+          <p class="brand-subtitle">Passkarta · Fän</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <span class="auth-state" id="authState">Inte ansluten</span>
+        <button id="authButton" class="button button-dark" type="button">Anslut Supabase</button>
+        <button id="authSettingsButton" class="button button-icon button-dark" type="button" aria-label="Supabase-inställningar" title="Supabase-inställningar">⚙</button>
+        <button id="saveRemoteButton" class="button button-primary" type="button" disabled>Spara Supabase</button>
+        <button id="loadDefaultsButton" class="button" type="button" disabled>Läs in standard (28 pass)</button>
+        <button id="exportButton" class="button button-primary" type="button" disabled>Exportera positioner</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="sidebar" aria-label="Fäns pass">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">Mark · Fän</span>
+            <h2>Passregister</h2>
+          </div>
+          <span id="passCounter" class="counter">0 / 28</span>
+        </div>
+        <div class="sidebar-content">
+          <div class="upload-area">
+            <label class="upload-label" for="pdfInput">
+              <span>
+                <span class="upload-title">Välj A3-karta</span>
+                <span class="upload-hint">PDF eller bild (PNG).</span>
+              </span>
+              <span class="upload-glyph" aria-hidden="true">↥</span>
+            </label>
+            <input class="file-input" id="pdfInput" type="file" accept="application/pdf,.pdf,image/png,.png,image/jpeg,.jpg,.jpeg">
+            <p class="file-meta" id="fileMeta">Ingen karta inläst</p>
+          </div>
+          <div class="search-wrap">
+            <label class="sr-only" for="passSearch">Sök pass</label>
+            <input id="passSearch" class="search" type="search" placeholder="Sök passnamn">
+          </div>
+          <div class="pass-list" id="passList" role="listbox" aria-label="Välj pass"></div>
+          <div class="list-footer" id="listFooter">Välj ett pass och placera det på kartan.</div>
+        </div>
+      </aside>
+
+      <section class="map-column" aria-label="Kartredigerare">
+        <div class="map-toolbar">
+          <div class="tool-group segmented" role="group" aria-label="Kartläge">
+            <button id="panModeButton" class="button is-active" type="button" aria-pressed="true">Panorera</button>
+            <button id="placeModeButton" class="button" type="button" aria-pressed="false">Placera pass</button>
+          </div>
+          <div class="tool-group">
+            <button id="zoomOutButton" class="button button-icon" type="button" aria-label="Zooma ut" title="Zooma ut" disabled>−</button>
+            <span class="zoom-label" id="zoomLabel">100 %</span>
+            <button id="zoomInButton" class="button button-icon" type="button" aria-label="Zooma in" title="Zooma in" disabled>+</button>
+            <button id="fitButton" class="button button-small" type="button" disabled>Anpassa</button>
+          </div>
+        </div>
+        <div id="mapViewport" class="map-viewport is-pan">
+          <div id="emptyMap" class="empty-map">
+            <div class="empty-content">
+              <div class="empty-number" aria-hidden="true">01</div>
+              <h1 class="empty-title">Läs in Fäns karta</h1>
+              <p class="empty-copy">Välj A3-kartan (PDF eller PNG-bild). Passnamn och alla 28 standardpositioner är förberedda.</p>
+              <div style="margin-top: 18px;">
+                <button type="button" class="button button-primary" onclick="document.getElementById('pdfInput').click()">Välj kartfil</button>
+              </div>
+            </div>
+          </div>
+          <div id="mapSurface" class="map-surface" hidden>
+            <canvas id="pdfCanvas" aria-label="Sida 1 i jaktkartan"></canvas>
+            <div id="markerLayer" class="marker-layer" aria-label="Passmarkörer"></div>
+          </div>
+        </div>
+        <div class="map-footer">
+          <span id="statusText" class="map-status" role="status" aria-live="polite">Väntar på karta</span>
+          <span id="modeNote" class="mode-note">Dra för att panorera</span>
+        </div>
+      </section>
+
+      <aside class="inspector" aria-label="Valt pass">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">Detaljer</span>
+            <h2>Valt pass</h2>
+          </div>
+        </div>
+        <div class="inspector-content" id="inspectorContent">
+          <h3 class="inspector-title" id="selectedName">Inget valt</h3>
+          <p class="inspector-description" id="selectedDescription">Välj ett pass i registret för att placera eller granska dess markör.</p>
+          <span class="detail-label">Position på kartan</span>
+          <p class="detail-value" id="selectedPosition">—</p>
+          <div class="inspector-actions">
+            <button id="placeSelectedButton" class="button button-primary" type="button" disabled>Placera på karta</button>
+            <button id="removePositionButton" class="button" type="button" disabled>Ta bort placering</button>
+          </div>
+        </div>
+        <div class="notice">
+          <strong id="saveNoticeTitle">Lokal arbetskopia</strong>
+          <span id="saveNoticeText">Placeringar sparas lokalt tills du väljer Spara Supabase. Ändringar jämförs mot senast inlästa data.</span>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <dialog id="connectionDialog" class="dialog-backdrop">
+    <form id="connectionForm" method="dialog">
+      <div class="dialog-header">
+        <span class="eyebrow">Utvecklingsprojekt · hunt-dev</span>
+        <h2>Anslut Supabase</h2>
+      </div>
+      <div class="dialog-body">
+        <p class="dialog-copy">Ange projektets publika URL och anon/publishable key. Värdena sparas endast i denna webbläsares localStorage. Lägg till <code id="redirectUrlHint"></code> under Supabase Auth → URL Configuration → Redirect URLs.</p>
+        <label class="field-label" for="projectUrlInput">Project URL</label>
+        <input class="field-input" id="projectUrlInput" type="url" autocomplete="url" required>
+        <label class="field-label" for="anonKeyInput">Publishable key / anon key</label>
+        <input class="field-input" id="anonKeyInput" type="password" autocomplete="off" required>
+        <p class="dialog-note"><strong>Använd aldrig service_role-nyckeln här.</strong> Den ger full databasåtkomst och får inte finnas i klientkod.</p>
+      </div>
+      <div class="dialog-actions">
+        <button id="cancelConnectionButton" class="button" type="button">Avbryt</button>
+        <button class="button button-primary" type="submit">Spara lokalt</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    (() => {
+      let passNames = [
+        '1T', '2P', '3P', '4P', '5P', '6T', '7P', '8', '9P', '10S',
+        '11P', '12P', '13', '14T', '15', '16', '17P', '18', '19', '20',
+        '21', '22P', '23', '24', '25', '26', '27', '28T'
+      ];
+      const storagePrefix = 'fan-pass-map:v1:';
+      const projectUrlStorageKey = 'hunt-dev-project-url';
+      const anonKeyStorageKey = 'hunt-dev-publishable-key';
+      const configuredProjectUrl = window.HUNT_CONFIG?.supabaseUrl || '';
+      const configuredPublishableKey = window.HUNT_CONFIG?.publishableKey || '';
+      const defaultProjectUrl = configuredProjectUrl;
+      const pdfInput = document.getElementById('pdfInput');
+      const passList = document.getElementById('passList');
+      const searchInput = document.getElementById('passSearch');
+      const viewport = document.getElementById('mapViewport');
+      const surface = document.getElementById('mapSurface');
+      const canvas = document.getElementById('pdfCanvas');
+      const markerLayer = document.getElementById('markerLayer');
+      const emptyMap = document.getElementById('emptyMap');
+      const fileMeta = document.getElementById('fileMeta');
+      const passCounter = document.getElementById('passCounter');
+      const listFooter = document.getElementById('listFooter');
+      const statusText = document.getElementById('statusText');
+      const modeNote = document.getElementById('modeNote');
+      const zoomLabel = document.getElementById('zoomLabel');
+      const selectedName = document.getElementById('selectedName');
+      const selectedDescription = document.getElementById('selectedDescription');
+      const selectedPosition = document.getElementById('selectedPosition');
+      const placeSelectedButton = document.getElementById('placeSelectedButton');
+      const removePositionButton = document.getElementById('removePositionButton');
+      const exportButton = document.getElementById('exportButton');
+      const loadDefaultsButton = document.getElementById('loadDefaultsButton');
+      const saveRemoteButton = document.getElementById('saveRemoteButton');
+      const authButton = document.getElementById('authButton');
+      const authSettingsButton = document.getElementById('authSettingsButton');
+      const authState = document.getElementById('authState');
+      const connectionDialog = document.getElementById('connectionDialog');
+      const connectionForm = document.getElementById('connectionForm');
+      const projectUrlInput = document.getElementById('projectUrlInput');
+      const anonKeyInput = document.getElementById('anonKeyInput');
+      document.getElementById('redirectUrlHint').textContent = `${window.location.origin}${window.location.pathname}`;
+      const cancelConnectionButton = document.getElementById('cancelConnectionButton');
+      const saveNoticeTitle = document.getElementById('saveNoticeTitle');
+      const saveNoticeText = document.getElementById('saveNoticeText');
+      const panModeButton = document.getElementById('panModeButton');
+      const placeModeButton = document.getElementById('placeModeButton');
+      const zoomInButton = document.getElementById('zoomInButton');
+      const zoomOutButton = document.getElementById('zoomOutButton');
+      const fitButton = document.getElementById('fitButton');
+
+      if (!window.pdfjsLib) {
+        statusText.textContent = 'PDF.js kunde inte laddas. Kontrollera internetanslutningen.';
+      } else {
+        try {
+          const workerScript = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          const workerBlob = new Blob([`importScripts("${workerScript}");`], { type: 'application/javascript' });
+          pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(workerBlob);
+        } catch (workerError) {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+      }
+
+      const state = {
+        pdf: null,
+        page: null,
+        file: null,
+        identity: '',
+        positions: {},
+        selected: null,
+        mode: 'pan',
+        zoom: 1,
+        panX: 0,
+        panY: 0,
+        baseWidth: 0,
+        baseHeight: 0,
+        gesture: null,
+        resizeFrame: 0,
+        supabase: null,
+        user: null,
+        authSubscription: null,
+        remote: null,
+        remoteMapVersionId: null,
+        remoteBasePositions: {},
+        remoteDirty: false,
+        isSavingRemote: false,
+        remoteLoading: false
+      };
+
+      const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+      function savePositions() {
+        if (!state.identity) return;
+        try {
+          localStorage.setItem(storagePrefix + state.identity, JSON.stringify({
+            mark: 'Fän',
+            fileName: state.file ? state.file.name : 'karta',
+            fileSize: state.file ? state.file.size : 0,
+            mapCoordinates: 'normalized-pdf-page-0..1',
+            positions: state.positions
+          }));
+        } catch (error) {
+          console.warn('Kunde inte spara i localStorage:', error);
+        }
+        if (state.remote && state.remoteMapVersionId === state.remote.mapVersionId) {
+          state.remoteDirty = true;
+        }
+        renderPassList();
+        updateInspector();
+        updateRemoteSaveButton();
+        updateStatus();
+      }
+
+      function updateRemoteSaveButton() {
+        const canSave = Boolean(
+          state.user && state.remote &&
+          state.remoteMapVersionId === state.remote.mapVersionId
+        );
+        saveRemoteButton.disabled = !canSave || !state.remoteDirty || state.isSavingRemote;
+        saveRemoteButton.textContent = state.isSavingRemote
+          ? 'Sparar…'
+          : state.remoteDirty ? 'Spara Supabase' : 'Sparat';
+        saveNoticeTitle.textContent = state.remote ? 'Supabase · Fän' : 'Lokal arbetskopia';
+        saveNoticeText.textContent = state.remote
+          ? state.remoteDirty
+            ? 'Ändringar ligger lokalt. Spara till Supabase när de är klara; samtidiga ändringar skyddas.'
+            : 'Kartversion och pass läses från Supabase. Positioner skrivs när du väljer Spara Supabase.'
+          : 'Positioner sparas lokalt tills du ansluter till Supabase. Du kan även exportera JSON.';
+      }
+
+      function isServiceRoleKey(key) {
+        if (/service[_-]?role|sb_secret_/i.test(key)) return true;
+        const parts = key.split('.');
+        if (parts.length !== 3) return false;
+        try {
+          const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+          return payload.role === 'service_role';
+        } catch (error) {
+          return false;
+        }
+      }
+
+      function createSupabaseClient(projectUrl, anonKey) {
+        if (!window.supabase || !window.supabase.createClient) {
+          throw new Error('Supabase-klienten kunde inte laddas. Kontrollera internetanslutningen.');
+        }
+        if (isServiceRoleKey(anonKey)) {
+          throw new Error('Service role/secret keys får inte användas i webbläsaren.');
+        }
+        const normalizedUrl = projectUrl.trim().replace(/\/$/, '');
+        const normalizedKey = anonKey.trim();
+        if (!normalizedUrl.startsWith('https://') || !normalizedKey) {
+          throw new Error('Ange en giltig HTTPS Project URL och en publishable/anon key.');
+        }
+        localStorage.setItem(projectUrlStorageKey, normalizedUrl);
+        localStorage.setItem(anonKeyStorageKey, normalizedKey);
+        state.supabase = window.supabase.createClient(normalizedUrl, normalizedKey, {
+          auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+        });
+        state.authSubscription?.unsubscribe();
+        const { data } = state.supabase.auth.onAuthStateChange((event, session) => {
+          if (event === 'INITIAL_SESSION') return;
+          window.setTimeout(() => void handleAuthSession(session), 0);
+        });
+        state.authSubscription = data.subscription;
+        return state.supabase;
+      }
+
+      async function handleAuthSession(session) {
+        state.user = session?.user || null;
+        authState.textContent = state.user ? state.user.email || 'Inloggad' : 'Ej inloggad';
+        authButton.textContent = state.user ? 'Logga ut' : 'Logga in med Google';
+        if (!state.user) {
+          state.remote = null;
+          state.remoteMapVersionId = null;
+          state.remoteBasePositions = {};
+          state.remoteDirty = false;
+          updateRemoteSaveButton();
+          updateStatus('Utloggad från Supabase');
+          return;
+        }
+        await loadRemoteMapData();
+      }
+
+      async function startGoogleSignIn() {
+        if (!state.supabase) {
+          connectionDialog.showModal();
+          return;
+        }
+        if (window.location.protocol === 'file:') {
+          updateStatus('Öppna sidan via localhost innan Google-inloggning.');
+          return;
+        }
+        updateStatus('Öppnar Google-inloggning…');
+        const redirectTo = `${window.location.origin}${window.location.pathname}${window.location.search}`;
+        const { error } = await state.supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo }
+        });
+        if (error) updateStatus(`Inloggning misslyckades: ${error.message}`);
+      }
+
+      async function restoreSupabaseSession() {
+        const projectUrl = configuredProjectUrl || localStorage.getItem(projectUrlStorageKey);
+        const anonKey = configuredPublishableKey || localStorage.getItem(anonKeyStorageKey);
+        if (!projectUrl || !anonKey) return false;
+        try {
+          createSupabaseClient(projectUrl, anonKey);
+          const { data, error } = await state.supabase.auth.getSession();
+          if (error) throw error;
+          if (data.session) await handleAuthSession(data.session);
+          else {
+            authState.textContent = 'Inte inloggad';
+            authButton.textContent = 'Logga in med Google';
+          }
+          return Boolean(data.session);
+        } catch (error) {
+          updateStatus(`Supabase-konfiguration: ${error.message}`);
+          return false;
+        }
+      }
+
+      async function loadRemoteMapData() {
+        if (!state.supabase || !state.user || state.remoteLoading) return;
+        state.remoteLoading = true;
+        updateStatus('Hämtar Fäns kartdata från Supabase…');
+        try {
+          const { data: team, error: teamError } = await state.supabase
+            .from('teams').select('id').eq('name', 'Fän Jaktlag').single();
+          if (teamError) throw teamError;
+
+          const { data: leaderCheck, error: leaderCheckError } = await state.supabase
+            .rpc('is_team_leader', { target_team_id: team.id });
+          if (leaderCheckError) throw leaderCheckError;
+          if (!leaderCheck) throw new Error('Inloggad användare är inte registrerad som jaktledare för Fän Jaktlag.');
+
+          const { data: mark, error: markError } = await state.supabase
+            .from('marks').select('id').eq('team_id', team.id).eq('name', 'Fän').single();
+          if (markError) throw markError;
+
+          const { data: mapVersion, error: mapError } = await state.supabase
+            .from('mark_map_versions')
+            .select('id, version_number, storage_path, original_filename')
+            .eq('team_id', team.id).eq('mark_id', mark.id).eq('is_current', true).single();
+          if (mapError) throw mapError;
+
+          const { data: passes, error: passError } = await state.supabase
+            .from('passes').select('id, name').eq('team_id', team.id).eq('mark_id', mark.id)
+            .eq('is_active', true).order('name');
+          if (passError) throw passError;
+          const passMap = Object.fromEntries((passes || []).map(pass => [pass.name, pass.id]));
+          const missingPasses = (passes || []).filter(pass => !passNames.includes(pass.name));
+          if (missingPasses.length) passNames = [...passNames, ...missingPasses.map(pass => pass.name)];
+
+          const { data: rows, error: positionError } = await state.supabase
+            .from('pass_positions').select('pass_id, x, y')
+            .eq('team_id', team.id).eq('mark_id', mark.id).eq('map_version_id', mapVersion.id);
+          if (positionError) throw positionError;
+          const nameById = Object.fromEntries((passes || []).map(pass => [pass.id, pass.name]));
+          const positions = {};
+          const basePositions = {};
+          (rows || []).forEach(row => {
+            const name = nameById[row.pass_id];
+            if (!name) return;
+            positions[name] = { x: Number(row.x), y: Number(row.y) };
+            basePositions[row.pass_id] = { x: Number(row.x), y: Number(row.y) };
+          });
+
+          const previewPath = mapVersion.storage_path.replace(/\.pdf$/i, '.preview.png');
+          const { data: blob, error: downloadError } = await state.supabase.storage
+            .from('hunt-maps').download(previewPath);
+          if (downloadError) {
+            const details = downloadError.message || downloadError.error || 'okänt Storage-fel';
+            const code = downloadError.statusCode || downloadError.status || 'okänd status';
+            throw new Error(`Kunde inte hämta privat kartbild (${code}): ${details}`);
+          }
+          const previewName = mapVersion.original_filename.replace(/\.pdf$/i, '.preview.png');
+          const file = new File([blob], previewName, {
+            type: blob.type || 'image/png', lastModified: Date.now()
+          });
+
+          state.remote = {
+            teamId: team.id,
+            markId: mark.id,
+            mapVersionId: mapVersion.id,
+            passes: passMap,
+            allPassIds: (passes || []).map(pass => pass.id)
+          };
+          state.remoteBasePositions = basePositions;
+          state.remoteDirty = false;
+          updateRemoteSaveButton();
+          await loadMapFile(file, {
+            identity: `supabase:${mapVersion.id}`,
+            positions,
+            remoteMapVersionId: mapVersion.id
+          });
+          updateStatus(`Fän · kartversion ${mapVersion.version_number} · ${Object.keys(positions).length} positioner från Supabase`);
+        } catch (error) {
+          console.error('Kunde inte hämta Fäns kartdata:', error);
+          updateStatus(`Supabase-fel: ${error.message}`);
+        } finally {
+          state.remoteLoading = false;
+          updateRemoteSaveButton();
+        }
+      }
+
+      async function saveRemotePositions() {
+        if (!state.supabase || !state.user || !state.remote ||
+            state.remoteMapVersionId !== state.remote.mapVersionId || state.isSavingRemote) return;
+        state.isSavingRemote = true;
+        updateRemoteSaveButton();
+        updateStatus('Kontrollerar samtidiga ändringar…');
+        try {
+          const { data: currentRows, error: currentError } = await state.supabase
+            .from('pass_positions').select('pass_id, x, y')
+            .eq('team_id', state.remote.teamId)
+            .eq('mark_id', state.remote.markId)
+            .eq('map_version_id', state.remote.mapVersionId);
+          if (currentError) throw currentError;
+
+          const current = Object.fromEntries((currentRows || []).map(row => [row.pass_id, {
+            x: Number(row.x), y: Number(row.y)
+          }]));
+          const ids = new Set([...Object.keys(current), ...Object.keys(state.remoteBasePositions)]);
+          const conflicts = [...ids].filter(id => {
+            const before = state.remoteBasePositions[id] || null;
+            const now = current[id] || null;
+            return JSON.stringify(before) !== JSON.stringify(now);
+          });
+          if (conflicts.length) {
+            throw new Error('En annan jaktledare har ändrat passpositioner. Ladda om kartan och gör om dina ändringar.');
+          }
+
+          const rows = Object.entries(state.positions).flatMap(([name, position]) => {
+            const passId = state.remote.passes[name];
+            return passId ? [{
+              team_id: state.remote.teamId,
+              mark_id: state.remote.markId,
+              pass_id: passId,
+              map_version_id: state.remote.mapVersionId,
+              x: position.x,
+              y: position.y
+            }] : [];
+          });
+          if (rows.length) {
+            const { error } = await state.supabase.from('pass_positions')
+              .upsert(rows, { onConflict: 'pass_id,map_version_id' });
+            if (error) throw error;
+          }
+
+          const positionedIds = rows.map(row => row.pass_id);
+          const missingIds = state.remote.allPassIds.filter(id => !positionedIds.includes(id));
+          if (missingIds.length) {
+            const { error } = await state.supabase.from('pass_positions').delete()
+              .eq('team_id', state.remote.teamId)
+              .eq('mark_id', state.remote.markId)
+              .eq('map_version_id', state.remote.mapVersionId)
+              .in('pass_id', missingIds);
+            if (error) throw error;
+          }
+
+          state.remoteBasePositions = Object.fromEntries(rows.map(row => [row.pass_id, {
+            x: Number(row.x), y: Number(row.y)
+          }]));
+          state.remoteDirty = false;
+          updateStatus(`Sparat i Supabase · ${rows.length} passpositioner`);
+        } catch (error) {
+          updateStatus(`Kunde inte spara: ${error.message}`);
+        } finally {
+          state.isSavingRemote = false;
+          updateRemoteSaveButton();
+        }
+      }
+
+      function updateStatus(message) {
+        if (message) {
+          statusText.textContent = message;
+          return;
+        }
+        const placedCount = Object.keys(state.positions).length;
+        statusText.textContent = state.file
+          ? `${placedCount} av ${passNames.length} pass placerade · ${state.remoteDirty ? 'osparade ändringar' : state.remoteMapVersionId ? 'Supabase' : 'lokalt'}`
+          : 'Väntar på karta';
+      }
+
+      function setMode(mode) {
+        state.mode = mode;
+        panModeButton.classList.toggle('is-active', mode === 'pan');
+        placeModeButton.classList.toggle('is-active', mode === 'place');
+        panModeButton.setAttribute('aria-pressed', String(mode === 'pan'));
+        placeModeButton.setAttribute('aria-pressed', String(mode === 'place'));
+        viewport.classList.toggle('is-pan', mode === 'pan');
+        viewport.classList.toggle('is-place', mode === 'place');
+        modeNote.textContent = mode === 'pan' ? 'Dra för att panorera' : 'Välj ett pass, klicka på kartan';
+      }
+
+      function renderPassList() {
+        const query = searchInput.value.trim().toLowerCase();
+        const filtered = passNames.filter(name => name.toLowerCase().includes(query));
+        passList.replaceChildren();
+        filtered.forEach((name, index) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'pass-row';
+          button.classList.toggle('is-selected', state.selected === name);
+          button.setAttribute('role', 'option');
+          button.setAttribute('aria-selected', String(state.selected === name));
+          button.addEventListener('click', () => selectPass(name));
+
+          const number = document.createElement('span');
+          number.className = 'pass-number';
+          number.textContent = String(passNames.indexOf(name) + 1).padStart(2, '0');
+          const label = document.createElement('span');
+          label.className = 'pass-name';
+          label.textContent = name;
+          const indicator = document.createElement('span');
+          indicator.className = 'pass-state';
+          indicator.classList.toggle('is-placed', Boolean(state.positions[name]));
+          indicator.setAttribute('aria-label', state.positions[name] ? 'Placerat' : 'Ej placerat');
+
+          button.append(number, label, indicator);
+          passList.append(button);
+        });
+
+        const placedCount = Object.keys(state.positions).length;
+        passCounter.textContent = `${placedCount} / ${passNames.length}`;
+        listFooter.textContent = state.mode === 'place'
+          ? 'Välj ett pass, tryck sedan på kartan.'
+          : 'Välj ett pass för att se dess position.';
+        exportButton.disabled = placedCount === 0;
+      }
+
+      function selectPass(name) {
+        state.selected = name;
+        renderPassList();
+        updateInspector();
+        if (!state.positions[name] && state.file) {
+          setMode('place');
+          updateStatus(`Pass ${name} valt · klicka på kartan för att placera`);
+        }
+      }
+
+      function updateInspector() {
+        const name = state.selected;
+        const position = name ? state.positions[name] : null;
+        selectedName.textContent = name || 'Inget valt';
+        selectedDescription.textContent = !name
+          ? 'Välj ett pass i registret för att placera eller granska dess markör.'
+          : position
+            ? 'Dra markören på kartan för att finjustera placeringen.'
+            : 'Passet saknar position. Välj Placera pass och tryck på kartan.';
+        selectedPosition.textContent = position
+          ? `x ${(position.x * 100).toFixed(1)} % · y ${(position.y * 100).toFixed(1)} %`
+          : 'Ej placerat';
+        placeSelectedButton.disabled = !name || !state.file;
+        removePositionButton.disabled = !position;
+      }
+
+      function renderMarkers() {
+        markerLayer.replaceChildren();
+        passNames.forEach(name => {
+          const position = state.positions[name];
+          if (!position) return;
+          const pin = document.createElement('button');
+          pin.type = 'button';
+          pin.className = 'map-pin';
+          pin.classList.toggle('is-selected', state.selected === name);
+          pin.textContent = name;
+          pin.title = `Pass ${name}`;
+          pin.setAttribute('aria-label', `Pass ${name}, dra för att flytta`);
+          pin.style.left = `${position.x * 100}%`;
+          pin.style.top = `${position.y * 100}%`;
+          pin.addEventListener('click', event => {
+            event.stopPropagation();
+            selectPass(name);
+          });
+          pin.addEventListener('pointerdown', event => startPinDrag(name, event));
+          markerLayer.append(pin);
+        });
+      }
+
+      function applyTransform() {
+        surface.style.transform = `translate(-50%, -50%) translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`;
+        zoomLabel.textContent = `${Math.round(state.zoom * 100)} %`;
+        zoomInButton.disabled = !state.file || state.zoom >= 4;
+        zoomOutButton.disabled = !state.file || state.zoom <= 1;
+        fitButton.disabled = !state.file;
+      }
+
+      async function renderPage() {
+        if (!state.page || !state.file) return;
+        const rect = viewport.getBoundingClientRect();
+        const availableWidth = Math.max(120, (rect.width || 800) - 44);
+        const availableHeight = Math.max(120, (rect.height || 600) - 44);
+        const pixelRatio = Math.max(1, window.devicePixelRatio || 1);
+
+        if (state.page.type === 'image') {
+          const img = state.page.img;
+          const scale = Math.min(availableWidth / img.naturalWidth, availableHeight / img.naturalHeight);
+          const cssWidth = img.naturalWidth * scale;
+          const cssHeight = img.naturalHeight * scale;
+          state.baseWidth = cssWidth;
+          state.baseHeight = cssHeight;
+
+          canvas.width = Math.floor(cssWidth * pixelRatio);
+          canvas.height = Math.floor(cssHeight * pixelRatio);
+          canvas.style.width = `${cssWidth}px`;
+          canvas.style.height = `${cssHeight}px`;
+          surface.style.width = `${cssWidth}px`;
+          surface.style.height = `${cssHeight}px`;
+
+          const context = canvas.getContext('2d', { alpha: false });
+          context.imageSmoothingQuality = 'high';
+          context.drawImage(img, 0, 0, canvas.width, canvas.height);
+          applyTransform();
+          renderMarkers();
+          return;
+        }
+
+        const pageAtOne = state.page.getViewport({ scale: 1 });
+        const scale = Math.min(availableWidth / pageAtOne.width, availableHeight / pageAtOne.height);
+        const cssViewport = state.page.getViewport({ scale });
+        state.baseWidth = cssViewport.width;
+        state.baseHeight = cssViewport.height;
+
+        canvas.width = Math.floor(cssViewport.width * pixelRatio);
+        canvas.height = Math.floor(cssViewport.height * pixelRatio);
+        canvas.style.width = `${cssViewport.width}px`;
+        canvas.style.height = `${cssViewport.height}px`;
+        surface.style.width = `${cssViewport.width}px`;
+        surface.style.height = `${cssViewport.height}px`;
+
+        const context = canvas.getContext('2d', { alpha: false });
+        await state.page.render({
+          canvasContext: context,
+          viewport: cssViewport,
+          transform: pixelRatio === 1 ? null : [pixelRatio, 0, 0, pixelRatio, 0, 0]
+        }).promise;
+        applyTransform();
+        renderMarkers();
+      }
+
+      function isPdfFile(file) {
+        return Boolean(file && (
+          file.type === 'application/pdf' ||
+          file.type === 'application/x-pdf' ||
+          (file.name && file.name.toLowerCase().endsWith('.pdf'))
+        ));
+      }
+
+      function isImageFile(file) {
+        return Boolean(file && (
+          (file.type && file.type.startsWith('image/')) ||
+          (file.name && file.name.match(/\.(png|jpe?g|webp)$/i))
+        ));
+      }
+
+      async function getDefaultA3Positions() {
+        try {
+          const response = await fetch('testdata/fan_pass_positions.json', { cache: 'no-store' });
+          if (!response.ok) throw new Error('Local pass-position JSON not available');
+          const data = await response.json();
+          if (data.mark !== 'Fän' || data.coordinateSystem !== 'normalized-pdf-page-0..1') {
+            throw new Error('Position file does not match Fän A3 coordinate format');
+          }
+          const positions = Object.fromEntries(Object.entries(data.positions || {}).filter(([name, point]) =>
+            passNames.includes(name) && Number.isFinite(point?.x) && Number.isFinite(point?.y) &&
+            point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1
+          ));
+          if (!Object.keys(positions).length) throw new Error('No valid pass positions found');
+          return positions;
+        } catch (error) {
+          return {};
+        }
+      }
+
+      async function loadMapFile(file, options = {}) {
+        if (!file) {
+          updateStatus('Ingen fil vald.');
+          return;
+        }
+
+        updateStatus('Läser in kartan…');
+        try {
+          if (isPdfFile(file)) {
+            if (!window.pdfjsLib) {
+              updateStatus('PDF.js kunde inte laddas. Kontrollera internetanslutningen eller använd PNG-bilden.');
+              return;
+            }
+            const data = await file.arrayBuffer();
+            const loadingTask = pdfjsLib.getDocument({
+              data,
+              isEvalSupported: false
+            });
+            const pdf = await loadingTask.promise;
+            if (pdf.numPages < 1) {
+              updateStatus('PDF-filen saknar sidor.');
+              return;
+            }
+            state.pdf = pdf;
+            state.page = await pdf.getPage(1);
+          } else if (isImageFile(file)) {
+            const img = new Image();
+            const url = URL.createObjectURL(file);
+            await new Promise((resolve, reject) => {
+              img.onload = () => resolve();
+              img.onerror = () => reject(new Error('Kunde inte läsa bildfilen'));
+              img.src = url;
+            });
+            state.pdf = null;
+            state.page = { type: 'image', img };
+          } else {
+            updateStatus('Välj en PDF- eller bildfil (PNG/JPG).');
+            return;
+          }
+
+          state.file = file;
+          state.identity = options.identity || `${encodeURIComponent(file.name)}:${file.size || 0}:${file.lastModified || 0}`;
+          state.remoteMapVersionId = options.remoteMapVersionId || null;
+
+          let savedPositions = null;
+          if (Object.prototype.hasOwnProperty.call(options, 'positions')) {
+            savedPositions = options.positions || {};
+          } else {
+            try {
+              const saved = localStorage.getItem(storagePrefix + state.identity);
+              if (saved) savedPositions = JSON.parse(saved).positions;
+              if (!saved && options.identity) {
+                const legacyKey = Object.keys(localStorage)
+                  .filter(key => key.startsWith(storagePrefix))
+                  .reverse()
+                  .find(key => {
+                    try {
+                      const record = JSON.parse(localStorage.getItem(key));
+                      return record.fileName === file.name && record.fileSize === (file.size || 0);
+                    } catch (error) {
+                      return false;
+                    }
+                  });
+                if (legacyKey) savedPositions = JSON.parse(localStorage.getItem(legacyKey)).positions;
+              }
+            } catch (e) {
+              console.warn('Kunde inte läsa localStorage:', e);
+            }
+          }
+
+          if (Object.prototype.hasOwnProperty.call(options, 'positions')) {
+            state.positions = options.positions || {};
+          } else if (!savedPositions || Object.keys(savedPositions).length === 0) {
+            state.positions = await getDefaultA3Positions();
+            savePositions();
+          } else {
+            state.positions = savedPositions;
+            if (options.identity && !localStorage.getItem(storagePrefix + state.identity)) {
+              savePositions();
+            }
+          }
+
+          loadDefaultsButton.disabled = false;
+          state.zoom = 1;
+          state.panX = 0;
+          state.panY = 0;
+          emptyMap.hidden = true;
+          surface.hidden = false;
+          fileMeta.textContent = `${file.name} · ${(file.size ? (file.size / 1024 / 1024).toFixed(1) : '?')} MB`;
+          setMode('pan');
+          await renderPage();
+          renderPassList();
+          updateInspector();
+          updateStatus();
+        } catch (error) {
+          console.error('Kunde inte läsa karta:', error);
+          const msg = error && error.message ? error.message : String(error);
+          updateStatus(`Fel vid inläsning: ${msg}`);
+        }
+      }
+
+      function positionAt(clientX, clientY) {
+        const rect = surface.getBoundingClientRect();
+        return {
+          x: clamp((clientX - rect.left) / rect.width, 0, 1),
+          y: clamp((clientY - rect.top) / rect.height, 0, 1)
+        };
+      }
+
+      function placeSelected(clientX, clientY) {
+        if (!state.selected || !state.file) {
+          updateStatus('Välj först ett pass i listan.');
+          return;
+        }
+        state.positions[state.selected] = positionAt(clientX, clientY);
+        savePositions();
+        renderMarkers();
+        updateStatus(`Pass ${state.selected} placerat · sparat lokalt`);
+      }
+
+      function startPinDrag(name, event) {
+        event.preventDefault();
+        event.stopPropagation();
+        state.selected = name;
+        state.gesture = { type: 'pin', name, pointerId: event.pointerId, element: event.currentTarget };
+        event.currentTarget.setPointerCapture(event.pointerId);
+        renderPassList();
+        updateInspector();
+      }
+
+      viewport.addEventListener('pointerdown', event => {
+        if (event.target.closest('.map-pin')) return;
+        if (state.mode !== 'pan' || event.button !== 0) return;
+        state.gesture = {
+          type: 'pan',
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          panX: state.panX,
+          panY: state.panY
+        };
+        viewport.classList.add('is-dragging');
+        viewport.setPointerCapture(event.pointerId);
+      });
+
+      window.addEventListener('pointermove', event => {
+        const gesture = state.gesture;
+        if (!gesture || gesture.pointerId !== event.pointerId) return;
+        if (gesture.type === 'pan') {
+          state.panX = gesture.panX + event.clientX - gesture.startX;
+          state.panY = gesture.panY + event.clientY - gesture.startY;
+          applyTransform();
+        } else {
+          const position = positionAt(event.clientX, event.clientY);
+          state.positions[gesture.name] = position;
+          gesture.element.style.left = `${position.x * 100}%`;
+          gesture.element.style.top = `${position.y * 100}%`;
+        }
+      });
+
+      window.addEventListener('pointerup', event => {
+        if (!state.gesture || state.gesture.pointerId !== event.pointerId) return;
+        const wasPin = state.gesture.type === 'pin';
+        state.gesture = null;
+        viewport.classList.remove('is-dragging');
+        if (wasPin) savePositions();
+      });
+
+      surface.addEventListener('click', event => {
+        if (event.target.closest('.map-pin')) return;
+        if (state.mode === 'place') placeSelected(event.clientX, event.clientY);
+      });
+
+      viewport.addEventListener('wheel', event => {
+        if (!state.file) return;
+        event.preventDefault();
+        state.zoom = clamp(state.zoom + (event.deltaY < 0 ? 0.12 : -0.12), 1, 4);
+        applyTransform();
+      }, { passive: false });
+
+      viewport.addEventListener('dragover', event => event.preventDefault());
+      viewport.addEventListener('drop', event => {
+        event.preventDefault();
+        const file = [...event.dataTransfer.files].find(item => isPdfFile(item) || isImageFile(item));
+        if (file) loadMapFile(file);
+      });
+
+      pdfInput.addEventListener('change', event => loadMapFile(event.target.files[0]));
+      searchInput.addEventListener('input', renderPassList);
+      panModeButton.addEventListener('click', () => setMode('pan'));
+      placeModeButton.addEventListener('click', () => setMode('place'));
+      placeSelectedButton.addEventListener('click', () => {
+        if (!state.selected) return;
+        setMode('place');
+        updateStatus(`Pass ${state.selected} valt · klicka på kartan`);
+      });
+      removePositionButton.addEventListener('click', () => {
+        if (!state.selected) return;
+        delete state.positions[state.selected];
+        savePositions();
+        renderMarkers();
+      });
+      zoomInButton.addEventListener('click', () => {
+        state.zoom = clamp(state.zoom + 0.2, 1, 4);
+        applyTransform();
+      });
+      zoomOutButton.addEventListener('click', () => {
+        state.zoom = clamp(state.zoom - 0.2, 1, 4);
+        applyTransform();
+      });
+      fitButton.addEventListener('click', () => {
+        state.zoom = 1;
+        state.panX = 0;
+        state.panY = 0;
+        applyTransform();
+      });
+      exportButton.addEventListener('click', () => {
+        if (!state.file) return;
+        const payload = {
+          mark: 'Fän',
+          mapFile: state.file.name,
+          coordinateSystem: 'normalized-pdf-page-0..1',
+          exportedAt: new Date().toISOString(),
+          positions: passNames
+            .filter(name => state.positions[name])
+            .map(name => ({ name, ...state.positions[name] }))
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'fan-pass-positions.json';
+        link.click();
+        URL.revokeObjectURL(url);
+      });
+      loadDefaultsButton.addEventListener('click', async () => {
+        if (!state.file) return;
+        state.positions = await getDefaultA3Positions();
+        savePositions();
+        renderMarkers();
+        updateStatus(`${Object.keys(state.positions).length} standardpositioner inlästa lokalt`);
+      });
+
+      authSettingsButton.addEventListener('click', () => {
+        projectUrlInput.value = configuredProjectUrl || localStorage.getItem(projectUrlStorageKey) || defaultProjectUrl;
+        anonKeyInput.value = configuredPublishableKey || localStorage.getItem(anonKeyStorageKey) || '';
+        connectionDialog.showModal();
+      });
+      cancelConnectionButton.addEventListener('click', () => connectionDialog.close());
+      connectionForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        try {
+          createSupabaseClient(projectUrlInput.value, anonKeyInput.value);
+          connectionDialog.close();
+          await startGoogleSignIn();
+        } catch (error) {
+          updateStatus(`Supabase-konfiguration: ${error.message}`);
+        }
+      });
+      authButton.addEventListener('click', async () => {
+        if (!state.supabase) {
+          projectUrlInput.value = configuredProjectUrl || localStorage.getItem(projectUrlStorageKey) || defaultProjectUrl;
+          anonKeyInput.value = configuredPublishableKey || localStorage.getItem(anonKeyStorageKey) || '';
+          connectionDialog.showModal();
+          return;
+        }
+        if (!state.user) {
+          await startGoogleSignIn();
+          return;
+        }
+        const { error } = await state.supabase.auth.signOut();
+        if (error) updateStatus(`Utloggning misslyckades: ${error.message}`);
+      });
+      saveRemoteButton.addEventListener('click', saveRemotePositions);
+
+      new ResizeObserver(() => {
+        if (state.page) {
+          cancelAnimationFrame(state.resizeFrame);
+          state.resizeFrame = requestAnimationFrame(() => renderPage());
+        }
+      }).observe(viewport);
+
+      async function tryAutoLoad() {
+        const candidates = [
+          'testdata/karta_a3.png',
+          'testdata/2609 Karta A3.pdf',
+          'testdata/2609%20Karta%20A3.pdf'
+        ];
+        for (const url of candidates) {
+          try {
+            const res = await fetch(url);
+            if (res.ok) {
+              const blob = await res.blob();
+              const fname = url.split('/').pop().replace('%20', ' ');
+              const file = new File([blob], fname, { type: blob.type });
+              await loadMapFile(file, { identity: 'local:fan:a3:v1' });
+              return;
+            }
+          } catch (e) {
+            // expected to fail under file:// without local server
+          }
+        }
+      }
+
+      async function initializeEditor() {
+        renderPassList();
+        updateInspector();
+        setMode('pan');
+        updateRemoteSaveButton();
+        const hasSession = await restoreSupabaseSession();
+        if (!hasSession) await tryAutoLoad();
+      }
+
+      void initializeEditor();
+    })();
+  </script>
+</body>
+</html>
